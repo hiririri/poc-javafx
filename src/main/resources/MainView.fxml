@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.csvmonitor.view.MainController"
+            styleClass="root-pane">
+    
+    <!-- Top: Toolbar with Search and Controls -->
+    <top>
+        <VBox spacing="8" styleClass="toolbar-container">
+            <padding>
+                <Insets top="12" right="16" bottom="8" left="16"/>
+            </padding>
+            
+            <!-- Title Bar -->
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <Label text="CSV Table Monitor" styleClass="app-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="rowCountLabel" text="Rows: 0" styleClass="info-label"/>
+            </HBox>
+            
+            <!-- Main Toolbar -->
+            <HBox spacing="12" alignment="CENTER_LEFT" styleClass="main-toolbar">
+                
+                <!-- File Operations -->
+                <HBox spacing="6" styleClass="button-group">
+                    <Button fx:id="openCsvButton" text="Open CSV" onAction="#onOpenCsv" 
+                            styleClass="toolbar-button"/>
+                    <Button fx:id="saveCsvButton" text="Save CSV" onAction="#onSaveCsv" 
+                            styleClass="toolbar-button"/>
+                </HBox>
+                
+                <Separator orientation="VERTICAL"/>
+                
+                <!-- Update Controls -->
+                <HBox spacing="6" styleClass="button-group">
+                    <Button fx:id="startPauseButton" text="Start" onAction="#onStartPause" 
+                            styleClass="toolbar-button, primary-button" prefWidth="100"/>
+                    <Button fx:id="unlockAllButton" text="Unlock All" onAction="#onUnlockAll" 
+                            styleClass="toolbar-button"/>
+                </HBox>
+                
+                <Separator orientation="VERTICAL"/>
+                
+                <Region HBox.hgrow="ALWAYS"/>
+                
+            </HBox>
+        </VBox>
+    </top>
+    
+    <!-- Center: Table Container (FilteredTableView created programmatically) -->
+    <center>
+        <VBox fx:id="tableContainer" styleClass="table-container">
+            <padding>
+                <Insets top="0" right="16" bottom="16" left="16"/>
+            </padding>
+            <!-- FilteredTableView will be added here programmatically -->
+        </VBox>
+    </center>
+    
+    <!-- Bottom: Status Bar -->
+    <bottom>
+        <HBox styleClass="status-bar" alignment="CENTER_LEFT" spacing="12">
+            <padding>
+                <Insets top="8" right="16" bottom="8" left="16"/>
+            </padding>
+            
+            <Label fx:id="statusLabel" text="Ready" styleClass="status-text"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label text="Use column filters to search data" 
+                   styleClass="hint-text"/>
+        </HBox>
+    </bottom>
+    
+</BorderPane>

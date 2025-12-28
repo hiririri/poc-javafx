@@ -1,0 +1,85 @@
+/*
+ * CSS Styles for CSV Table Monitor
+ * 
+ * Minimal styles - only real-time update related formatting
+ * Uses default JavaFX/Modena theme for everything else
+ */
+
+/* ==================== Conditional Formatting (Real-time Updates) ==================== */
+
+/* ALERT status - entire row background */
+.alert-row {
+    -fx-background-color: #ffcccc !important;
+}
+
+.alert-row:odd {
+    -fx-background-color: #ffdddd !important;
+}
+
+.alert-row:selected {
+    -fx-background-color: #ff9999 !important;
+}
+
+/* Locked row (recently edited) - orange left border */
+.locked-row {
+    -fx-border-color: #ff9900;
+    -fx-border-width: 0 0 0 3;
+}
+
+/* ==================== Price Cell Styling ==================== */
+
+/* Price up - green text */
+.price-up {
+    -fx-text-fill: #009900 !important;
+    -fx-font-weight: bold;
+}
+
+/* Price down - red text */
+.price-down {
+    -fx-text-fill: #cc0000 !important;
+    -fx-font-weight: bold;
+}
+
+/* Flash animation for price changes - green flash for up */
+.price-flash-up {
+    -fx-background-color: #ccffcc !important;
+}
+
+/* Flash animation for price changes - red flash for down */
+.price-flash-down {
+    -fx-background-color: #ffcccc !important;
+}
+
+/* Generic flash (neutral) */
+.price-flash {
+    -fx-background-color: #ffffcc !important;
+}
+
+/* ==================== Status Cell Styling ==================== */
+
+.status-alert {
+    -fx-text-fill: #cc0000 !important;
+    -fx-font-weight: bold;
+}
+
+.status-normal {
+    -fx-text-fill: #009900 !important;
+}
+
+.status-pending {
+    -fx-text-fill: #cc6600 !important;
+}
+
+.status-active {
+    -fx-text-fill: #0066cc !important;
+}
+
+.status-closed {
+    -fx-text-fill: #666666 !important;
+}
+
+/* ==================== Unlock Button ==================== */
+
+.unlock-button {
+    -fx-font-size: 11px;
+}
