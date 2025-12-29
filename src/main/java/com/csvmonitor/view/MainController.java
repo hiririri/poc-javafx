@@ -11,6 +11,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.util.Duration;
@@ -25,6 +26,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
+import java.util.prefs.Preferences;
 
 /**
  * Controller for the main view.
@@ -45,6 +47,8 @@ public class MainController implements Initializable {
     // FXML injected components
     @FXML
     private VBox tableContainer;
+    @FXML
+    private StackPane dockHost;
 
     @FXML
     private Button openCsvButton;
@@ -62,6 +66,7 @@ public class MainController implements Initializable {
 
     // ControlsFX FilteredTableView - created programmatically
     private FilteredTableView<RowViewModel> filteredTableView;
+    private DockingArea dockingArea;
 
     // Dynamic columns created from ViewModel configuration
     private final List<FilteredTableColumn<RowViewModel, ?>> columns = new ArrayList<>();
@@ -75,6 +80,8 @@ public class MainController implements Initializable {
         setupTableBinding();
         setupColumnFilters();
         setupToolbarBindings();
+
+        restoreDockLayout();
 
         // Load default data on startup
         Platform.runLater(viewModel::loadDefaultCsv);
@@ -96,9 +103,23 @@ public class MainController implements Initializable {
         placeholder.getStyleClass().add("placeholder-text");
         filteredTableView.setPlaceholder(placeholder);
 
+        dockingArea = new DockingArea();
+        Tab tableTab = new Tab("Table", filteredTableView);
+        dockingArea.addTab("table", tableTab);
+        dockingArea.splitActiveProperty().addListener((obs, oldVal, newVal) -> {
+            if (newVal) {
+                dockHost.getStyleClass().add("dock-host-active");
+            } else {
+                dockHost.getStyleClass().remove("dock-host-active");
+            }
+        });
+        if (dockingArea.isSplitActive()) {
+            dockHost.getStyleClass().add("dock-host-active");
+        }
+
         // Add to container with VBox grow
-        VBox.setVgrow(filteredTableView, javafx.scene.layout.Priority.ALWAYS);
-        tableContainer.getChildren().add(filteredTableView);
+        VBox.setVgrow(dockingArea, javafx.scene.layout.Priority.ALWAYS);
+        tableContainer.getChildren().add(dockingArea);
 
         logger.info("FilteredTableView created");
     }
@@ -313,11 +334,52 @@ public class MainController implements Initializable {
         viewModel.unlockAllRows();
     }
 
+    private void autoRepairLayoutIfNeeded(boolean restored) {
+        if (!restored && dockingArea != null) {
+            dockingArea.resetLayout();
+            saveDockLayout();
+            return;
+        }
+        if (dockingArea != null && dockingArea.saveLayout().isBlank()) {
+            dockingArea.resetLayout();
+            saveDockLayout();
+        }
+    }
+
     /**
      * Called when the application is closing.
      */
     public void shutdown() {
+        saveDockLayout();
         viewModel.shutdown();
+    }
+
+    private void restoreDockLayout() {
+        Preferences prefs = Preferences.userNodeForPackage(App.class);
+        String layout = prefs.get("dock.layout", null);
+        boolean restored = false;
+        if (layout != null && !layout.isBlank()) {
+            restored = dockingArea.restoreLayout(layout);
+            if (!restored) {
+                logger.warn("Failed to restore dock layout, using defaults");
+            }
+        }
+        autoRepairLayoutIfNeeded(restored);
+    }
+
+    private void saveDockLayout() {
+        Preferences prefs = Preferences.userNodeForPackage(App.class);
+        String layout = dockingArea.saveLayout();
+        if (layout == null || layout.isBlank()) {
+            prefs.remove("dock.layout");
+        } else {
+            prefs.put("dock.layout", layout);
+        }
+        try {
+            prefs.flush();
+        } catch (Exception ex) {
+            logger.warn("Failed to save dock layout: {}", ex.getMessage());
+        }
     }
 
     // ==================== Custom Cell Classes ====================

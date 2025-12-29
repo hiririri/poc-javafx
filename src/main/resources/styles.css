@@ -83,3 +83,37 @@
 .unlock-button {
     -fx-font-size: 11px;
 }
+
+/* ==================== Docking ==================== */
+
+.dock-grip {
+    -fx-padding: 0 6 0 0;
+    -fx-opacity: 0.6;
+    -fx-cursor: move;
+}
+
+.dock-preview {
+    -fx-background-color: rgba(60, 120, 200, 0.2);
+    -fx-border-color: #3c78c8;
+    -fx-border-width: 2;
+    -fx-background-insets: 2;
+    -fx-border-insets: 2;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+}
+
+.dock-host {
+    -fx-padding: 8;
+}
+
+.dock-host-active {
+    -fx-background-color: linear-gradient(to bottom, #f7f8fb, #eef1f6);
+    -fx-border-color: #d3d8e1;
+    -fx-border-width: 1;
+}
+
+.table-container {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e0e4ea;
+    -fx-border-width: 1;
+}

@@ -4,6 +4,7 @@ module com.csvmonitor {
     requires org.controlsfx.controls;
     requires org.slf4j;
     requires javafx.base;
+    requires java.prefs;
 
     opens com.csvmonitor.view to javafx.fxml;
     opens com.csvmonitor.model to javafx.base;
@@ -12,4 +13,3 @@ module com.csvmonitor {
     exports com.csvmonitor.model;
     exports com.csvmonitor.viewmodel;
 }
-
