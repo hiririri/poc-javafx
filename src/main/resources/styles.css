@@ -83,3 +83,51 @@
 .unlock-button {
     -fx-font-size: 11px;
 }
+
+/* ==================== Dock Panel ==================== */
+
+.dock-pane {
+    -fx-background-color: linear-gradient(to bottom, #f8f8fb, #f2f2f8);
+    -fx-border-color: #d9d9e3;
+    -fx-border-width: 1 0 0 1;
+}
+
+.dock-workspace {
+    -fx-padding: 10;
+    -fx-background-color: transparent;
+}
+
+.dock-area {
+    -fx-background-color: transparent;
+}
+
+.dock-area .tab-header-area {
+    -fx-background-color: transparent;
+    -fx-padding: 4 6 4 6;
+}
+
+.dock-tab-header {
+    -fx-padding: 4 8;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+}
+
+.dock-tab-header:hover {
+    -fx-background-color: rgba(64,128,255,0.12);
+}
+
+.dock-tab-title {
+    -fx-text-fill: #2f3a4a;
+}
+
+.dock-card {
+    -fx-background-color: rgba(255,255,255,0.85);
+    -fx-padding: 10 12 10 12;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-border-color: #e0e4ef;
+}
+
+.dock-drop-marker {
+    -fx-effect: dropshadow(gaussian, rgba(64,128,255,0.35), 12, 0.2, 0, 0);
+}

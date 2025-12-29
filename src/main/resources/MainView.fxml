@@ -47,19 +47,28 @@
                 <Separator orientation="VERTICAL"/>
                 
                 <Region HBox.hgrow="ALWAYS"/>
-                
+
+                <ToggleButton fx:id="dockToggleButton" text="Dock Workspace" onAction="#onToggleDock" 
+                              styleClass="toolbar-button" selected="true" />
             </HBox>
         </VBox>
     </top>
     
-    <!-- Center: Table Container (FilteredTableView created programmatically) -->
+    <!-- Center: Table Container (FilteredTableView created programmatically) with Dock Workspace -->
     <center>
-        <VBox fx:id="tableContainer" styleClass="table-container">
-            <padding>
-                <Insets top="0" right="16" bottom="16" left="16"/>
-            </padding>
-            <!-- FilteredTableView will be added here programmatically -->
-        </VBox>
+        <BorderPane fx:id="contentPane">
+            <center>
+                <VBox fx:id="tableContainer" styleClass="table-container">
+                    <padding>
+                        <Insets top="0" right="16" bottom="16" left="16"/>
+                    </padding>
+                    <!-- FilteredTableView will be added here programmatically -->
+                </VBox>
+            </center>
+            <right>
+                <StackPane fx:id="dockWorkspaceHolder" prefWidth="340" styleClass="dock-pane" />
+            </right>
+        </BorderPane>
     </center>
     
     <!-- Bottom: Status Bar -->
