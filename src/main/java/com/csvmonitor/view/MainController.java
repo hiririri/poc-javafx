@@ -4,6 +4,7 @@ import com.csvmonitor.viewmodel.ColumnConfig;
 import com.csvmonitor.viewmodel.RowViewModel;
 import com.csvmonitor.viewmodel.TableViewModel;
 import javafx.animation.PauseTransition;
+import javafx.event.ActionEvent;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.value.ObservableValue;
@@ -11,6 +12,7 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.util.Duration;
@@ -59,6 +61,26 @@ public class MainController implements Initializable {
     private Label statusLabel;
     @FXML
     private Label rowCountLabel;
+    @FXML
+    private Label dockStatusValue;
+    @FXML
+    private Label dockUpdateValue;
+    @FXML
+    private Label dockTotalRowsValue;
+    @FXML
+    private Label dockFilteredRowsValue;
+    @FXML
+    private ToggleButton dockToggleButton;
+    @FXML
+    private ToggleButton dockRightToggle;
+    @FXML
+    private ToggleButton dockBottomToggle;
+    @FXML
+    private Button dockStartPauseButton;
+    @FXML
+    private BorderPane contentPane;
+    @FXML
+    private VBox dockPane;
 
     // ControlsFX FilteredTableView - created programmatically
     private FilteredTableView<RowViewModel> filteredTableView;
@@ -254,6 +276,7 @@ public class MainController implements Initializable {
 
         // Status label binding
         statusLabel.textProperty().bind(viewModel.statusMessageProperty());
+        dockStatusValue.textProperty().bind(viewModel.statusMessageProperty());
 
         // Row count label binding
         rowCountLabel.textProperty().bind(
@@ -272,6 +295,18 @@ public class MainController implements Initializable {
                         return "Rows: %d / %d".formatted(filtered, total);
                     }
                 }, filteredTableView.predicateProperty(), viewModel.totalRowCountProperty()));
+
+        dockTotalRowsValue.textProperty().bind(viewModel.totalRowCountProperty().asString());
+        dockFilteredRowsValue.textProperty().bind(viewModel.filteredRowCountProperty().asString());
+
+        dockUpdateValue.textProperty().bind(
+                Bindings.when(viewModel.updateRunningProperty())
+                        .then("运行中")
+                        .otherwise("已暂停"));
+        dockStartPauseButton.textProperty().bind(
+                Bindings.when(viewModel.updateRunningProperty())
+                        .then("暂停")
+                        .otherwise("开始"));
     }
 
     // ==================== Event Handlers ====================
@@ -311,6 +346,49 @@ public class MainController implements Initializable {
     @FXML
     private void onUnlockAll() {
         viewModel.unlockAllRows();
+    }
+
+    @FXML
+    private void onReloadSample() {
+        viewModel.loadDefaultCsv();
+    }
+
+    @FXML
+    private void onToggleDock(ActionEvent event) {
+        if (event.getSource() != dockToggleButton) {
+            dockToggleButton.setSelected(!dockToggleButton.isSelected());
+        }
+        updateDockVisibility();
+    }
+
+    private void updateDockVisibility() {
+        boolean showDock = dockToggleButton.isSelected();
+        dockPane.setManaged(showDock);
+        dockPane.setVisible(showDock);
+    }
+
+    @FXML
+    private void onDockToRight() {
+        contentPane.setBottom(null);
+        contentPane.setRight(dockPane);
+        dockRightToggle.setSelected(true);
+        dockBottomToggle.setSelected(false);
+        if (!dockToggleButton.isSelected()) {
+            dockToggleButton.setSelected(true);
+            updateDockVisibility();
+        }
+    }
+
+    @FXML
+    private void onDockToBottom() {
+        contentPane.setRight(null);
+        contentPane.setBottom(dockPane);
+        dockBottomToggle.setSelected(true);
+        dockRightToggle.setSelected(false);
+        if (!dockToggleButton.isSelected()) {
+            dockToggleButton.setSelected(true);
+            updateDockVisibility();
+        }
     }
 
     /**

@@ -47,19 +47,86 @@
                 <Separator orientation="VERTICAL"/>
                 
                 <Region HBox.hgrow="ALWAYS"/>
-                
+
+                <ToggleButton fx:id="dockToggleButton" text="Dock" onAction="#onToggleDock" 
+                              styleClass="toolbar-button" selected="true" />
             </HBox>
         </VBox>
     </top>
     
-    <!-- Center: Table Container (FilteredTableView created programmatically) -->
+    <!-- Center: Table Container (FilteredTableView created programmatically) with Dock panel -->
     <center>
-        <VBox fx:id="tableContainer" styleClass="table-container">
-            <padding>
-                <Insets top="0" right="16" bottom="16" left="16"/>
-            </padding>
-            <!-- FilteredTableView will be added here programmatically -->
-        </VBox>
+        <BorderPane fx:id="contentPane">
+            <center>
+                <VBox fx:id="tableContainer" styleClass="table-container">
+                    <padding>
+                        <Insets top="0" right="16" bottom="16" left="16"/>
+                    </padding>
+                    <!-- FilteredTableView will be added here programmatically -->
+                </VBox>
+            </center>
+            <right>
+                <VBox fx:id="dockPane" spacing="12" prefWidth="300" styleClass="dock-pane">
+                    <padding>
+                        <Insets top="12" right="12" bottom="12" left="12"/>
+                    </padding>
+
+                    <fx:define>
+                        <ToggleGroup fx:id="dockPositionGroup" />
+                    </fx:define>
+
+                    <HBox alignment="CENTER_LEFT" spacing="8" styleClass="dock-header">
+                        <Label text="Dock 面板" styleClass="dock-title" />
+                        <Region HBox.hgrow="ALWAYS" />
+                        <Button text="隐藏" onAction="#onToggleDock" styleClass="dock-link" />
+                    </HBox>
+
+                    <Separator />
+
+                    <VBox spacing="6" styleClass="dock-section">
+                        <Label text="运行状态" styleClass="dock-section-title" />
+                        <GridPane hgap="10" vgap="8">
+                            <columnConstraints>
+                                <ColumnConstraints halignment="RIGHT" percentWidth="40" />
+                                <ColumnConstraints halignment="LEFT" percentWidth="60" />
+                            </columnConstraints>
+                            <Label text="状态" GridPane.rowIndex="0" GridPane.columnIndex="0" />
+                            <Label fx:id="dockStatusValue" text="Ready" GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="dock-value" />
+
+                            <Label text="更新" GridPane.rowIndex="1" GridPane.columnIndex="0" />
+                            <Label fx:id="dockUpdateValue" text="已暂停" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="dock-value" />
+
+                            <Label text="总行数" GridPane.rowIndex="2" GridPane.columnIndex="0" />
+                            <Label fx:id="dockTotalRowsValue" text="0" GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="dock-value" />
+
+                            <Label text="已过滤" GridPane.rowIndex="3" GridPane.columnIndex="0" />
+                            <Label fx:id="dockFilteredRowsValue" text="0" GridPane.rowIndex="3" GridPane.columnIndex="1" styleClass="dock-value" />
+                        </GridPane>
+                    </VBox>
+
+                    <Separator />
+
+                    <VBox spacing="10" styleClass="dock-section">
+                        <Label text="快捷操作" styleClass="dock-section-title" />
+                        <HBox spacing="8">
+                            <Button fx:id="dockStartPauseButton" text="开始" onAction="#onStartPause" styleClass="dock-action" />
+                            <Button text="解锁全部" onAction="#onUnlockAll" styleClass="dock-action" />
+                        </HBox>
+                        <Button text="重新加载示例数据" onAction="#onReloadSample" styleClass="dock-action" />
+                    </VBox>
+
+                    <Separator />
+
+                    <VBox spacing="6" styleClass="dock-section">
+                        <Label text="停靠位置" styleClass="dock-section-title" />
+                        <HBox spacing="8">
+                            <ToggleButton fx:id="dockRightToggle" text="右侧" toggleGroup="$dockPositionGroup" selected="true" onAction="#onDockToRight" />
+                            <ToggleButton fx:id="dockBottomToggle" text="底部" toggleGroup="$dockPositionGroup" onAction="#onDockToBottom" />
+                        </HBox>
+                    </VBox>
+                </VBox>
+            </right>
+        </BorderPane>
     </center>
     
     <!-- Bottom: Status Bar -->
