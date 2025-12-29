@@ -92,36 +92,42 @@
     -fx-border-width: 1 0 0 1;
 }
 
-.dock-header .dock-title {
-    -fx-font-size: 14px;
-    -fx-font-weight: 700;
-}
-
-.dock-link {
+.dock-workspace {
+    -fx-padding: 10;
     -fx-background-color: transparent;
-    -fx-text-fill: #4a90e2;
-    -fx-padding: 2 6 2 6;
 }
 
-.dock-section {
-    -fx-background-color: rgba(255,255,255,0.8);
-    -fx-padding: 8 10 8 10;
-    -fx-border-radius: 6;
+.dock-area {
+    -fx-background-color: transparent;
+}
+
+.dock-area .tab-header-area {
+    -fx-background-color: transparent;
+    -fx-padding: 4 6 4 6;
+}
+
+.dock-tab-header {
+    -fx-padding: 4 8;
     -fx-background-radius: 6;
+    -fx-border-radius: 6;
 }
 
-.dock-section-title {
-    -fx-font-size: 12px;
-    -fx-font-weight: 700;
-    -fx-text-fill: #555;
+.dock-tab-header:hover {
+    -fx-background-color: rgba(64,128,255,0.12);
 }
 
-.dock-value {
-    -fx-font-weight: 700;
+.dock-tab-title {
+    -fx-text-fill: #2f3a4a;
 }
 
-.dock-action {
-    -fx-background-color: #eef3ff;
-    -fx-text-fill: #3051c9;
-    -fx-font-weight: 600;
+.dock-card {
+    -fx-background-color: rgba(255,255,255,0.85);
+    -fx-padding: 10 12 10 12;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-border-color: #e0e4ef;
+}
+
+.dock-drop-marker {
+    -fx-effect: dropshadow(gaussian, rgba(64,128,255,0.35), 12, 0.2, 0, 0);
 }

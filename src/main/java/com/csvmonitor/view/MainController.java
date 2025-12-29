@@ -4,15 +4,18 @@ import com.csvmonitor.viewmodel.ColumnConfig;
 import com.csvmonitor.viewmodel.RowViewModel;
 import com.csvmonitor.viewmodel.TableViewModel;
 import javafx.animation.PauseTransition;
-import javafx.event.ActionEvent;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.value.ObservableValue;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.util.Duration;
@@ -62,31 +65,20 @@ public class MainController implements Initializable {
     @FXML
     private Label rowCountLabel;
     @FXML
-    private Label dockStatusValue;
-    @FXML
-    private Label dockUpdateValue;
-    @FXML
-    private Label dockTotalRowsValue;
-    @FXML
-    private Label dockFilteredRowsValue;
-    @FXML
     private ToggleButton dockToggleButton;
-    @FXML
-    private ToggleButton dockRightToggle;
-    @FXML
-    private ToggleButton dockBottomToggle;
-    @FXML
-    private Button dockStartPauseButton;
     @FXML
     private BorderPane contentPane;
     @FXML
-    private VBox dockPane;
+    private StackPane dockWorkspaceHolder;
 
     // ControlsFX FilteredTableView - created programmatically
     private FilteredTableView<RowViewModel> filteredTableView;
 
     // Dynamic columns created from ViewModel configuration
     private final List<FilteredTableColumn<RowViewModel, ?>> columns = new ArrayList<>();
+
+    // Dock workspace manager
+    private DockManager dockManager;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -97,6 +89,7 @@ public class MainController implements Initializable {
         setupTableBinding();
         setupColumnFilters();
         setupToolbarBindings();
+        setupDockWorkspace();
 
         // Load default data on startup
         Platform.runLater(viewModel::loadDefaultCsv);
@@ -276,7 +269,6 @@ public class MainController implements Initializable {
 
         // Status label binding
         statusLabel.textProperty().bind(viewModel.statusMessageProperty());
-        dockStatusValue.textProperty().bind(viewModel.statusMessageProperty());
 
         // Row count label binding
         rowCountLabel.textProperty().bind(
@@ -296,17 +288,6 @@ public class MainController implements Initializable {
                     }
                 }, filteredTableView.predicateProperty(), viewModel.totalRowCountProperty()));
 
-        dockTotalRowsValue.textProperty().bind(viewModel.totalRowCountProperty().asString());
-        dockFilteredRowsValue.textProperty().bind(viewModel.filteredRowCountProperty().asString());
-
-        dockUpdateValue.textProperty().bind(
-                Bindings.when(viewModel.updateRunningProperty())
-                        .then("运行中")
-                        .otherwise("已暂停"));
-        dockStartPauseButton.textProperty().bind(
-                Bindings.when(viewModel.updateRunningProperty())
-                        .then("暂停")
-                        .otherwise("开始"));
     }
 
     // ==================== Event Handlers ====================
@@ -361,41 +342,109 @@ public class MainController implements Initializable {
         updateDockVisibility();
     }
 
-    private void updateDockVisibility() {
-        boolean showDock = dockToggleButton.isSelected();
-        dockPane.setManaged(showDock);
-        dockPane.setVisible(showDock);
-    }
-
-    @FXML
-    private void onDockToRight() {
-        contentPane.setBottom(null);
-        contentPane.setRight(dockPane);
-        dockRightToggle.setSelected(true);
-        dockBottomToggle.setSelected(false);
-        if (!dockToggleButton.isSelected()) {
-            dockToggleButton.setSelected(true);
-            updateDockVisibility();
-        }
-    }
-
-    @FXML
-    private void onDockToBottom() {
-        contentPane.setRight(null);
-        contentPane.setBottom(dockPane);
-        dockBottomToggle.setSelected(true);
-        dockRightToggle.setSelected(false);
-        if (!dockToggleButton.isSelected()) {
-            dockToggleButton.setSelected(true);
-            updateDockVisibility();
-        }
-    }
-
     /**
      * Called when the application is closing.
      */
     public void shutdown() {
         viewModel.shutdown();
+    }
+
+    // ==================== Dock Workspace ====================
+
+    private void setupDockWorkspace() {
+        dockManager = new DockManager(dockWorkspaceHolder);
+
+        DockManager.DockItem statusItem = new DockManager.DockItem(
+                "status",
+                "状态",
+                createStatusContent()
+        );
+
+        DockManager.DockItem actionsItem = new DockManager.DockItem(
+                "actions",
+                "操作",
+                createActionsContent()
+        );
+
+        DockManager.DockItem filtersItem = new DockManager.DockItem(
+                "filters",
+                "过滤提示",
+                createFilterHintContent()
+        );
+
+        dockManager.createArea("监控", statusItem, actionsItem, filtersItem);
+        updateDockVisibility();
+    }
+
+    private Node createStatusContent() {
+        GridPane grid = new GridPane();
+        grid.setHgap(12);
+        grid.setVgap(8);
+
+        grid.add(new Label("状态"), 0, 0);
+        Label statusValue = new Label();
+        statusValue.textProperty().bind(viewModel.statusMessageProperty());
+        grid.add(statusValue, 1, 0);
+
+        grid.add(new Label("更新"), 0, 1);
+        Label updateValue = new Label();
+        updateValue.textProperty().bind(
+                Bindings.when(viewModel.updateRunningProperty())
+                        .then("运行中")
+                        .otherwise("已暂停"));
+        grid.add(updateValue, 1, 1);
+
+        grid.add(new Label("总行数"), 0, 2);
+        Label totalRows = new Label();
+        totalRows.textProperty().bind(viewModel.totalRowCountProperty().asString());
+        grid.add(totalRows, 1, 2);
+
+        grid.add(new Label("已过滤"), 0, 3);
+        Label filteredRows = new Label();
+        filteredRows.textProperty().bind(viewModel.filteredRowCountProperty().asString());
+        grid.add(filteredRows, 1, 3);
+
+        grid.getStyleClass().add("dock-card");
+        return grid;
+    }
+
+    private Node createActionsContent() {
+        VBox box = new VBox(10);
+
+        Button toggleButton = new Button();
+        toggleButton.textProperty().bind(
+                Bindings.when(viewModel.updateRunningProperty())
+                        .then("暂停实时更新")
+                        .otherwise("开始实时更新"));
+        toggleButton.setOnAction(e -> viewModel.toggleUpdates());
+
+        Button unlockButton = new Button("解锁全部");
+        unlockButton.setOnAction(e -> viewModel.unlockAllRows());
+
+        Button reloadButton = new Button("重新加载示例数据");
+        reloadButton.setOnAction(e -> viewModel.loadDefaultCsv());
+
+        box.getChildren().addAll(toggleButton, unlockButton, reloadButton);
+        box.getStyleClass().add("dock-card");
+        return box;
+    }
+
+    private Node createFilterHintContent() {
+        VBox box = new VBox(6);
+        box.getChildren().addAll(
+                new Label("提示："),
+                new Label("• 支持列筛选器（南向表头）组合过滤"),
+                new Label("• 通过拖拽标签可将面板拆分到新分组"),
+                new Label("• 拖到面板边缘可快速左右/上下分割")
+        );
+        box.getStyleClass().add("dock-card");
+        return box;
+    }
+
+    private void updateDockVisibility() {
+        boolean showDock = dockToggleButton.isSelected();
+        dockWorkspaceHolder.setManaged(showDock);
+        dockWorkspaceHolder.setVisible(showDock);
     }
 
     // ==================== Custom Cell Classes ====================
