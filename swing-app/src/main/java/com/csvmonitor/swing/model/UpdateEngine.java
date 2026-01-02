@@ -1,10 +1,9 @@
-package com.csvmonitor.model;
+package com.csvmonitor.swing.model;
 
-import javafx.application.Platform;
-import javafx.collections.ObservableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.swing.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -17,13 +16,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Engine for real-time price updates.
  * 
- * Java 21 Features Used:
- * - Virtual Threads (via newVirtualThreadPerTaskExecutor for async tasks)
- * - Record patterns for deconstruction
- * - Enhanced switch expressions
- * 
  * Key features:
- * - Runs on background thread, updates UI via Platform.runLater
+ * - Runs on background thread, updates UI via SwingUtilities.invokeLater
  * - Respects edit locks (rows manually edited are not auto-updated for 5 seconds)
  * - Batch updates for performance
  */
@@ -31,7 +25,7 @@ public class UpdateEngine {
     
     private static final Logger logger = LoggerFactory.getLogger(UpdateEngine.class);
     
-    // Java 21: Use virtual thread factory for the scheduler
+    // Use virtual thread factory for the scheduler (Java 21)
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, 
             Thread.ofVirtual().name("UpdateEngine-VT-", 0).factory());
     
@@ -39,14 +33,14 @@ public class UpdateEngine {
     private final AtomicBoolean running = new AtomicBoolean(false);
     
     private ScheduledFuture<?> updateTask;
-    private ObservableList<RowModel> data;
+    private List<RowData> data;
+    private Runnable tableUpdateCallback;
     
-    // Configuration using record for immutability
-    private UpdateConfig config = new UpdateConfig(500, 5, 20, 0.02);
+    // Configuration
+    private UpdateConfig config = new UpdateConfig(500, 5, 1000, 0.20);
     
     /**
      * Configuration record for update parameters.
-     * Java 21: Records provide concise immutable data carriers.
      */
     public record UpdateConfig(
             long intervalMs,
@@ -54,7 +48,6 @@ public class UpdateEngine {
             int maxRowsToUpdate,
             double priceChangePercent
     ) {
-        // Compact constructor with validation
         public UpdateConfig {
             if (intervalMs <= 0) throw new IllegalArgumentException("intervalMs must be positive");
             if (minRowsToUpdate < 0) throw new IllegalArgumentException("minRowsToUpdate must be non-negative");
@@ -66,14 +59,21 @@ public class UpdateEngine {
     /**
      * Internal record to hold pending price updates.
      */
-    private record PriceUpdate(RowModel row, double newPrice) {}
+    private record PriceUpdate(RowData row, double newPrice) {}
     
     /**
      * Set the data source for updates.
      */
-    public void setData(ObservableList<RowModel> data) {
+    public void setData(List<RowData> data) {
         this.data = data;
         logger.info("UpdateEngine data source set with {} rows", data != null ? data.size() : 0);
+    }
+    
+    /**
+     * Set callback for table updates (to trigger table repaint).
+     */
+    public void setTableUpdateCallback(Runnable callback) {
+        this.tableUpdateCallback = callback;
     }
     
     /**
@@ -145,7 +145,6 @@ public class UpdateEngine {
     
     /**
      * Perform a batch update on random rows.
-     * Only updates the price column.
      */
     private void performUpdate() {
         if (data == null || data.isEmpty()) {
@@ -158,12 +157,12 @@ public class UpdateEngine {
                     random.nextInt(config.maxRowsToUpdate() - config.minRowsToUpdate() + 1);
             rowsToUpdate = Math.min(rowsToUpdate, dataSize);
             
-            // Collect price updates using Stream API
+            // Collect price updates
             List<PriceUpdate> updates = new ArrayList<>(rowsToUpdate);
             
             for (int i = 0; i < rowsToUpdate; i++) {
                 int index = random.nextInt(dataSize);
-                RowModel row = data.get(index);
+                RowData row = data.get(index);
                 
                 // Skip locked rows
                 if (row.isLocked()) {
@@ -179,9 +178,9 @@ public class UpdateEngine {
                 updates.add(new PriceUpdate(row, newPrice));
             }
             
-            // Apply updates on JavaFX thread
+            // Apply updates on Swing EDT
             if (!updates.isEmpty()) {
-                Platform.runLater(() -> applyUpdates(updates));
+                SwingUtilities.invokeLater(() -> applyUpdates(updates));
             }
             
         } catch (Exception e) {
@@ -191,12 +190,16 @@ public class UpdateEngine {
     
     /**
      * Apply price updates to the model.
-     * Uses record accessor methods for clean code.
      */
     private void applyUpdates(List<PriceUpdate> updates) {
         updates.stream()
                 .filter(update -> !update.row().isLocked())
                 .forEach(update -> update.row().setPrice(update.newPrice()));
+        
+        // Notify table to repaint
+        if (tableUpdateCallback != null) {
+            tableUpdateCallback.run();
+        }
         
         logger.trace("Applied {} price updates", updates.size());
     }
@@ -216,3 +219,4 @@ public class UpdateEngine {
                 config.maxRowsToUpdate(), percent);
     }
 }
+

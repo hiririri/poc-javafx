@@ -52,16 +52,14 @@
         </VBox>
     </top>
     
-    <!-- Center: Dock Host Panel -->
+    <!-- Center: Table Container -->
     <center>
-        <StackPane fx:id="dockHost" styleClass="dock-host">
-            <VBox fx:id="tableContainer" styleClass="table-container">
-                <padding>
-                    <Insets top="8" right="8" bottom="8" left="8"/>
-                </padding>
-                <!-- FilteredTableView will be added here programmatically -->
-            </VBox>
-        </StackPane>
+        <VBox fx:id="tableContainer" styleClass="table-container">
+            <padding>
+                <Insets top="8" right="8" bottom="8" left="8"/>
+            </padding>
+            <!-- FilteredTableView will be added here programmatically -->
+        </VBox>
     </center>
     
     <!-- Bottom: Status Bar -->

@@ -3,6 +3,7 @@ package com.csvmonitor.viewmodel;
 import com.csvmonitor.model.CsvRepository;
 import com.csvmonitor.model.RowModel;
 import com.csvmonitor.model.UpdateEngine;
+import javafx.application.Platform;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -13,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * ViewModel for the CSV Table Monitor.
@@ -55,7 +57,11 @@ public class TableViewModel {
         updateEngine.setData(masterData);
 
         // Sync masterData changes to viewData
+        // Skip during bulk loading as we handle viewData directly for performance
         masterData.addListener((ListChangeListener<RowModel>) change -> {
+            if (bulkLoading) {
+                return; // Skip - bulk load handles viewData directly
+            }
             while (change.next()) {
                 if (change.wasReplaced()) {
                     // Handle replacement
@@ -144,30 +150,94 @@ public class TableViewModel {
 
     // ==================== Commands ====================
 
+    // Batch size for async data loading to avoid UI thread blocking
+    private static final int BATCH_SIZE = 200;
+
+    // Flag to skip listener during bulk load (listener will create duplicate ViewModels)
+    private volatile boolean bulkLoading = false;
+
     /**
-     * Load the default sample.csv from resources.
+     * Load the default sample.csv from resources asynchronously.
+     * Data is loaded in background thread, RowViewModels are created in background,
+     * and inserted in batches to avoid UI freezing.
      */
     public void loadDefaultCsv() {
-        logger.info("Loading default CSV...");
+        logger.info("Loading default CSV asynchronously...");
         statusMessage.set("Loading default CSV...");
 
-        ObservableList<RowModel> data = csvRepository.loadDefaultCsv();
-        viewData.clear();
-        masterData.setAll(data);
+        CompletableFuture.runAsync(() -> {
+            // Load data in background thread
+            ObservableList<RowModel> data = csvRepository.loadDefaultCsv();
+            int totalSize = data.size();
+            List<RowModel> dataList = new ArrayList<>(data);
 
-        statusMessage.set("Loaded %d rows from sample.csv".formatted(data.size()));
-        logger.info("Loaded {} rows from default CSV", data.size());
+            // Create RowViewModels in background thread (expensive operation)
+            List<RowViewModel> viewModels = new ArrayList<>(totalSize);
+            for (RowModel model : dataList) {
+                viewModels.add(new RowViewModel(model));
+            }
+
+            // Clear existing data on UI thread first
+            Platform.runLater(() -> {
+                bulkLoading = true;
+                viewData.clear();
+                masterData.clear();
+            });
+
+            // Small delay to let clear complete
+            try { Thread.sleep(50); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+
+            // Add data in batches
+            for (int i = 0; i < totalSize; i += BATCH_SIZE) {
+                final int start = i;
+                final int end = Math.min(i + BATCH_SIZE, totalSize);
+                final List<RowModel> modelBatch = dataList.subList(start, end);
+                final List<RowViewModel> viewModelBatch = viewModels.subList(start, end);
+
+                Platform.runLater(() -> {
+                    masterData.addAll(modelBatch);
+                    viewData.addAll(viewModelBatch);
+                    statusMessage.set("Loading... %d / %d rows".formatted(end, totalSize));
+                });
+
+                // Small delay between batches to let UI thread breathe
+                if (end < totalSize) {
+                    try {
+                        Thread.sleep(16); // ~1 frame at 60fps
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+
+            Platform.runLater(() -> {
+                bulkLoading = false;
+                totalRowCount.set(viewData.size());
+                statusMessage.set("Loaded %d rows from sample.csv".formatted(totalSize));
+                logger.info("Loaded {} rows from default CSV", totalSize);
+            });
+        }).exceptionally(ex -> {
+            logger.error("Failed to load default CSV", ex);
+            Platform.runLater(() -> {
+                bulkLoading = false;
+                statusMessage.set("Failed to load CSV: " + ex.getMessage());
+            });
+            return null;
+        });
     }
 
     /**
-     * Load CSV from an external file.
+     * Load CSV from an external file asynchronously.
+     * Data is loaded in background thread, RowViewModels are created in background,
+     * and inserted in batches to avoid UI freezing.
      */
     public void loadCsvFromFile(File file) {
         if (file == null) {
             return;
         }
 
-        logger.info("Loading CSV from file: {}", file.getName());
+        logger.info("Loading CSV from file asynchronously: {}", file.getName());
         statusMessage.set("Loading " + file.getName() + "...");
 
         // Pause updates during load
@@ -176,17 +246,75 @@ public class TableViewModel {
             updateEngine.pause();
         }
 
-        ObservableList<RowModel> data = csvRepository.loadCsvFromFile(file);
-        viewData.clear();
-        masterData.setAll(data);
+        final String fileName = file.getName();
 
-        // Resume if was running
-        if (wasRunning) {
-            updateEngine.start();
-        }
+        CompletableFuture.runAsync(() -> {
+            // Load data in background thread
+            ObservableList<RowModel> data = csvRepository.loadCsvFromFile(file);
+            int totalSize = data.size();
+            List<RowModel> dataList = new ArrayList<>(data);
 
-        statusMessage.set("Loaded %d rows from %s".formatted(data.size(), file.getName()));
-        logger.info("Loaded {} rows from {}", data.size(), file.getName());
+            // Create RowViewModels in background thread (expensive operation)
+            List<RowViewModel> viewModels = new ArrayList<>(totalSize);
+            for (RowModel model : dataList) {
+                viewModels.add(new RowViewModel(model));
+            }
+
+            // Clear existing data on UI thread first
+            Platform.runLater(() -> {
+                bulkLoading = true;
+                viewData.clear();
+                masterData.clear();
+            });
+
+            // Small delay to let clear complete
+            try { Thread.sleep(50); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+
+            // Add data in batches
+            for (int i = 0; i < totalSize; i += BATCH_SIZE) {
+                final int start = i;
+                final int end = Math.min(i + BATCH_SIZE, totalSize);
+                final List<RowModel> modelBatch = dataList.subList(start, end);
+                final List<RowViewModel> viewModelBatch = viewModels.subList(start, end);
+
+                Platform.runLater(() -> {
+                    masterData.addAll(modelBatch);
+                    viewData.addAll(viewModelBatch);
+                    statusMessage.set("Loading... %d / %d rows".formatted(end, totalSize));
+                });
+
+                // Small delay between batches to let UI thread breathe
+                if (end < totalSize) {
+                    try {
+                        Thread.sleep(16); // ~1 frame at 60fps
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+
+            Platform.runLater(() -> {
+                bulkLoading = false;
+                totalRowCount.set(viewData.size());
+                // Resume if was running
+                if (wasRunning) {
+                    updateEngine.start();
+                }
+                statusMessage.set("Loaded %d rows from %s".formatted(totalSize, fileName));
+                logger.info("Loaded {} rows from {}", totalSize, fileName);
+            });
+        }).exceptionally(ex -> {
+            logger.error("Failed to load CSV from file: {}", fileName, ex);
+            Platform.runLater(() -> {
+                bulkLoading = false;
+                if (wasRunning) {
+                    updateEngine.start();
+                }
+                statusMessage.set("Failed to load " + fileName + ": " + ex.getMessage());
+            });
+            return null;
+        });
     }
 
     /**

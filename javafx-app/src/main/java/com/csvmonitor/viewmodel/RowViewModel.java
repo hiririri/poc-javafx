@@ -85,7 +85,10 @@ public class RowViewModel {
             return;
         }
 
-        String style = switch (statusValue.toUpperCase()) {
+        String upperStatus = statusValue.toUpperCase();
+        
+        // Cell style for status column
+        String cellStyle = switch (upperStatus) {
             case "ALERT", "WARN", "WARNING" -> "status-alert";
             case "NORMAL", "OK", "GOOD" -> "status-normal";
             case "PENDING", "WAIT" -> "status-pending";
@@ -93,14 +96,18 @@ public class RowViewModel {
             case "CLOSED", "DONE", "COMPLETE" -> "status-closed";
             default -> "";
         };
-        statusStyleClass.set(style);
+        statusStyleClass.set(cellStyle);
 
-        // Row style for ALERT
-        if ("ALERT".equals(statusValue.toUpperCase())) {
-            rowStyleClass.set("alert-row");
-        } else {
-            rowStyleClass.set("");
-        }
+        // Row background style based on status
+        String rowStyle = switch (upperStatus) {
+            case "ALERT", "WARN", "WARNING" -> "row-alert";
+            case "NORMAL", "OK", "GOOD" -> "row-normal";
+            case "PENDING", "WAIT" -> "row-pending";
+            case "ACTIVE", "LIVE", "RUNNING" -> "row-active";
+            case "CLOSED", "DONE", "COMPLETE" -> "row-closed";
+            default -> "";
+        };
+        rowStyleClass.set(rowStyle);
     }
 
     /**
