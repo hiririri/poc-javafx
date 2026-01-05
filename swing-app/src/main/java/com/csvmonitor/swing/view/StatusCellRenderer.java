@@ -1,10 +1,12 @@
 package com.csvmonitor.swing.view;
 
 import com.csvmonitor.swing.model.RowData;
+import com.jidesoft.grid.FilterableTableModel;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.*;
+import java.lang.reflect.Method;
 
 /**
  * Custom cell renderer that applies background color based on row status.
@@ -18,6 +20,10 @@ public class StatusCellRenderer extends DefaultTableCellRenderer {
     private static final Color PENDING_BG = new Color(0xFF, 0xF2, 0xCC);  // Light orange
     private static final Color ACTIVE_BG = new Color(0xCC, 0xE6, 0xFF);   // Light blue
     private static final Color CLOSED_BG = new Color(0xE6, 0xE6, 0xE6);   // Light gray
+    private static final Color PRICE_FLASH_A = new Color(0xFF, 0xF4, 0xB5); // Light amber
+    private static final Color PRICE_FLASH_B = new Color(0xFF, 0xE0, 0x8A); // Deeper amber
+    private static final long PRICE_FLASH_WINDOW_MS = 1000;
+    private static final long PRICE_FLASH_TOGGLE_MS = 180;
     
     // Text colors for status column
     private static final Color ALERT_FG = new Color(0xCC, 0x00, 0x00);    // Dark red
@@ -27,15 +33,19 @@ public class StatusCellRenderer extends DefaultTableCellRenderer {
     private static final Color CLOSED_FG = new Color(0x66, 0x66, 0x66);   // Dark gray
     
     private final CsvTableModel tableModel;
+    private final FilterableTableModel filterableTableModel;
     private final int columnIndex;
     private final boolean isStatusColumn;
     private final boolean isPriceColumn;
+    private final Method actualRowMethod;
     
-    public StatusCellRenderer(CsvTableModel tableModel, int columnIndex) {
+    public StatusCellRenderer(CsvTableModel tableModel, FilterableTableModel filterableTableModel, int columnIndex) {
         this.tableModel = tableModel;
+        this.filterableTableModel = filterableTableModel;
         this.columnIndex = columnIndex;
         this.isStatusColumn = columnIndex == 4;  // Status column
         this.isPriceColumn = columnIndex == 2;   // Price column
+        this.actualRowMethod = resolveActualRowMethod();
         
         // Set alignment based on column type
         switch (columnIndex) {
@@ -54,54 +64,90 @@ public class StatusCellRenderer extends DefaultTableCellRenderer {
         
         Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
         
-        // Convert view row to model row (important for sorting/filtering)
-        int modelRow = table.convertRowIndexToModel(row);
-        RowData rowData = tableModel.getRowAt(modelRow);
+        RowData rowData = resolveRowData(table, row);
         
         if (rowData == null) {
             return c;
         }
         
-        String status = rowData.getStatus();
+        applyBackground(table, c, rowData, isSelected);
+        applyForegroundAndFont(table, c, rowData, isSelected);
+        applyPriceFormatting(c, value);
         
+        return c;
+    }
+
+    private RowData resolveRowData(JTable table, int viewRow) {
+        int modelRow = table.convertRowIndexToModel(viewRow);
+        int actualRow = resolveActualRow(modelRow);
+        return tableModel.getRowAt(actualRow);
+    }
+
+    private void applyBackground(JTable table, Component c, RowData rowData, boolean isSelected) {
         if (isSelected) {
-            // Keep selection colors but slightly tint with status color
-            Color statusBg = getStatusBackgroundColor(status);
+            Color statusBg = getStatusBackgroundColor(rowData.getStatus());
             if (statusBg != null) {
                 c.setBackground(blend(table.getSelectionBackground(), statusBg, 0.7f));
             }
-        } else {
-            // Apply status background color
-            Color bgColor = getStatusBackgroundColor(status);
-            c.setBackground(bgColor != null ? bgColor : table.getBackground());
-            
-            // Apply special styling for status column
-            if (isStatusColumn) {
-                c.setForeground(getStatusForegroundColor(status));
-                if (c instanceof JLabel label) {
-                    label.setFont(label.getFont().deriveFont(Font.BOLD));
-                }
-            } else if (isPriceColumn) {
-                // Price direction coloring
-                int direction = rowData.getPriceDirection();
-                if (direction > 0) {
-                    c.setForeground(NORMAL_FG);  // Green for up
-                } else if (direction < 0) {
-                    c.setForeground(ALERT_FG);   // Red for down
-                } else {
-                    c.setForeground(table.getForeground());
-                }
-            } else {
-                c.setForeground(table.getForeground());
-            }
+            return;
         }
-        
-        // Format price with 5 decimal places
-        if (isPriceColumn && value instanceof Double price) {
+
+        if (isPriceColumn && shouldFlashPrice(rowData)) {
+            c.setBackground(getFlashColor());
+            return;
+        }
+
+        Color bgColor = getStatusBackgroundColor(rowData.getStatus());
+        c.setBackground(bgColor != null ? bgColor : table.getBackground());
+    }
+
+    private void applyForegroundAndFont(JTable table, Component c, RowData rowData, boolean isSelected) {
+        if (isSelected) {
+            return;
+        }
+        if (isStatusColumn) {
+            c.setForeground(getStatusForegroundColor(rowData.getStatus()));
+            if (c instanceof JLabel label) {
+                label.setFont(label.getFont().deriveFont(Font.BOLD));
+            }
+            return;
+        }
+        if (isPriceColumn) {
+            c.setForeground(getPriceForegroundColor(rowData, table));
+            return;
+        }
+        c.setForeground(table.getForeground());
+    }
+
+    private void applyPriceFormatting(Component c, Object value) {
+        if (!isPriceColumn || !(value instanceof Double price)) {
+            return;
+        }
+        if (c instanceof JLabel label) {
+            label.setText(formatPriceWithEmphasis(price));
+        } else {
             setText(String.format("%.5f", price));
         }
-        
-        return c;
+    }
+
+    private boolean shouldFlashPrice(RowData rowData) {
+        return System.currentTimeMillis() - rowData.getLastPriceChangeAt() < PRICE_FLASH_WINDOW_MS;
+    }
+
+    private Color getFlashColor() {
+        boolean phase = (System.currentTimeMillis() / PRICE_FLASH_TOGGLE_MS) % 2 == 0;
+        return phase ? PRICE_FLASH_A : PRICE_FLASH_B;
+    }
+
+    private Color getPriceForegroundColor(RowData rowData, JTable table) {
+        int direction = rowData.getPriceDirection();
+        if (direction > 0) {
+            return NORMAL_FG;
+        }
+        if (direction < 0) {
+            return ALERT_FG;
+        }
+        return table.getForeground();
     }
     
     private Color getStatusBackgroundColor(String status) {
@@ -140,5 +186,52 @@ public class StatusCellRenderer extends DefaultTableCellRenderer {
         int b = (int) (c1.getBlue() * ratio + c2.getBlue() * iRatio);
         return new Color(r, g, b);
     }
-}
 
+    private String formatPriceWithEmphasis(double price) {
+        String formatted = String.format("%.5f", price);
+        int dotIndex = formatted.indexOf('.');
+        if (dotIndex < 0) {
+            return formatted;
+        }
+        String intPart = formatted.substring(0, dotIndex + 1);
+        String frac = formatted.substring(dotIndex + 1);
+        if (frac.length() < 4) {
+            return formatted;
+        }
+        String firstTwo = frac.substring(0, 2);
+        String emph = frac.substring(2, 4);
+        String rest = frac.substring(4);
+        return "<html>" + intPart + firstTwo
+                + "<b><span style='font-size:110%'>" + emph + "</span></b>"
+                + rest + "</html>";
+    }
+
+    private Method resolveActualRowMethod() {
+        if (filterableTableModel == null) {
+            return null;
+        }
+        for (String name : new String[]{"getActualRow", "getActualRowAt", "getActualRowIndex"}) {
+            try {
+                return filterableTableModel.getClass().getMethod(name, int.class);
+            } catch (NoSuchMethodException ignored) {
+                // Try the next possible method name.
+            }
+        }
+        return null;
+    }
+
+    private int resolveActualRow(int modelRow) {
+        if (filterableTableModel == null || actualRowMethod == null) {
+            return modelRow;
+        }
+        try {
+            Object value = actualRowMethod.invoke(filterableTableModel, modelRow);
+            if (value instanceof Integer actualRow) {
+                return actualRow;
+            }
+        } catch (Exception ignored) {
+            // Fall back to model row when the reflective call fails.
+        }
+        return modelRow;
+    }
+}

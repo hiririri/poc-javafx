@@ -24,6 +24,13 @@
         <flatlaf.version>3.4</flatlaf.version>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>jidesoft-releases</id>
+            <url>https://maven.bioviz.org/repo2/</url>
+        </repository>
+    </repositories>
+
 
     <dependencyManagement>
         <dependencies>
@@ -62,6 +69,24 @@
                 <groupId>com.formdev</groupId>
                 <artifactId>flatlaf</artifactId>
                 <version>${flatlaf.version}</version>
+            </dependency>
+
+            <!-- https://mvnrepository.com/artifact/com.jidesoft/jide-grids -->
+            <dependency>
+                <groupId>com.jidesoft</groupId>
+                <artifactId>jide-grids</artifactId>
+                <version>3.5.15</version>
+            </dependency>
+            <dependency>
+                <groupId>com.jidesoft</groupId>
+                <artifactId>jide-common</artifactId>
+                <version>3.5.15</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.jidesoft</groupId>
+                <artifactId>jide-oss</artifactId>
+                <version>3.6.12</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

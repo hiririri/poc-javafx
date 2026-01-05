@@ -1,20 +1,24 @@
 package com.csvmonitor.swing.view;
 
-import com.csvmonitor.swing.model.CsvRepository;
-import com.csvmonitor.swing.model.RowData;
-import com.csvmonitor.swing.model.UpdateEngine;
+import com.csvmonitor.swing.controller.MainController;
+import com.jidesoft.grid.AutoFilterTableHeader;
+import com.jidesoft.grid.FilterableTableModel;
+import com.jidesoft.grid.SortableTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
-import javax.swing.table.TableRowSorter;
+import javax.swing.table.TableColumn;
+import javax.swing.table.TableColumnModel;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.Map;
 
 /**
  * Main frame for the CSV Table Monitor application.
@@ -26,7 +30,7 @@ import java.util.concurrent.CompletableFuture;
  * - Column filtering
  * - Sorting
  */
-public class MainFrame extends JFrame {
+public class MainFrame extends JFrame implements MainView {
     
     private static final Logger logger = LoggerFactory.getLogger(MainFrame.class);
     
@@ -36,19 +40,17 @@ public class MainFrame extends JFrame {
     
     // Components
     private CsvTableModel tableModel;
-    private JTable table;
-    private TableRowSorter<CsvTableModel> rowSorter;
-    private FilterPanel filterPanel;
+    private FilterableTableModel filterableTableModel;
+    private SortableTable table;
+    private Timer priceFlashTimer;
     private JButton startPauseButton;
     private JLabel statusLabel;
     private JLabel rowCountLabel;
+    private JPopupMenu columnMenu;
+    private final Map<TableColumn, Integer> columnOrder = new HashMap<>();
     
-    // Services
-    private final CsvRepository csvRepository = new CsvRepository();
-    private final UpdateEngine updateEngine = new UpdateEngine();
-    
-    // State
-    private boolean updateRunning = false;
+    private MainController controller;
+    private Runnable windowCloseHandler;
     
     public MainFrame() {
         setTitle(APP_TITLE);
@@ -58,11 +60,7 @@ public class MainFrame extends JFrame {
         setLocationRelativeTo(null);
         
         initComponents();
-        setupUpdateEngine();
         setupWindowListener();
-        
-        // Load default CSV on startup
-        SwingUtilities.invokeLater(this::loadDefaultCsv);
         
         logger.info("MainFrame initialized");
     }
@@ -103,11 +101,11 @@ public class MainFrame extends JFrame {
         
         // File buttons
         JButton openCsvButton = new JButton("Open CSV");
-        openCsvButton.addActionListener(e -> onOpenCsv());
+        openCsvButton.addActionListener(e -> handleOpenCsv());
         buttonBar.add(openCsvButton);
         
         JButton saveCsvButton = new JButton("Save CSV");
-        saveCsvButton.addActionListener(e -> onSaveCsv());
+        saveCsvButton.addActionListener(e -> handleSaveCsv());
         buttonBar.add(saveCsvButton);
         
         buttonBar.add(new JSeparator(SwingConstants.VERTICAL));
@@ -115,11 +113,15 @@ public class MainFrame extends JFrame {
         // Control buttons
         startPauseButton = new JButton("Start");
         startPauseButton.setPreferredSize(new Dimension(100, 26));
-        startPauseButton.addActionListener(e -> onStartPause());
+        startPauseButton.addActionListener(e -> handleStartPause());
         buttonBar.add(startPauseButton);
-        
+
+        JButton columnsButton = new JButton("Columns");
+        columnsButton.addActionListener(e -> showColumnMenu(columnsButton));
+        buttonBar.add(columnsButton);
+
         JButton unlockAllButton = new JButton("Unlock All");
-        unlockAllButton.addActionListener(e -> onUnlockAll());
+        unlockAllButton.addActionListener(e -> handleUnlockAll());
         buttonBar.add(unlockAllButton);
         
         toolbarContainer.add(buttonBar);
@@ -131,42 +133,112 @@ public class MainFrame extends JFrame {
         JPanel panel = new JPanel(new BorderLayout(0, 4));
         panel.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
         
-        // Create table model and sorter
+        // Create table model and filter wrapper
         tableModel = new CsvTableModel();
-        rowSorter = new TableRowSorter<>(tableModel);
+        filterableTableModel = new FilterableTableModel(tableModel);
         
         // Create table
-        table = new JTable(tableModel);
-        table.setRowSorter(rowSorter);
-        table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
+        table = new SortableTable(filterableTableModel);
+//        table.setAutoResizeMode(JTable.AUTO_RESIZE_ALL_COLUMNS);
         table.setRowHeight(24);
         table.setShowGrid(true);
         table.setGridColor(new Color(0xE0, 0xE0, 0xE0));
         table.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        table.getTableHeader().setReorderingAllowed(false);
+        table.getTableHeader().setReorderingAllowed(true);
         table.setDragEnabled(true);
         
         // Set column widths
         setColumnWidths();
+
+        // Column chooser menu
+        initColumnMenu();
         
         // Apply custom cell renderers for all columns
         for (int i = 0; i < tableModel.getColumnCount(); i++) {
-            table.getColumnModel().getColumn(i).setCellRenderer(new StatusCellRenderer(tableModel, i));
+            table.getColumnModel().getColumn(i).setCellRenderer(
+                    new StatusCellRenderer(tableModel, filterableTableModel, i)
+            );
         }
         
-        // Filter panel
-        filterPanel = new FilterPanel(table, rowSorter);
-        panel.add(filterPanel, BorderLayout.NORTH);
+        // JIDE auto filter header for per-column filtering
+        AutoFilterTableHeader filterHeader = new AutoFilterTableHeader(table);
+        filterHeader.setAutoFilterEnabled(true);
+        table.setTableHeader(filterHeader);
         
         // Scroll pane with table
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
         panel.add(scrollPane, BorderLayout.CENTER);
-        
-        // Listen for filter changes to update row count
-        rowSorter.addRowSorterListener(e -> updateRowCount());
+
+        // Repaint periodically to animate price flashing.
+        priceFlashTimer = new Timer(180, e -> table.repaint());
+        priceFlashTimer.start();
+
+        // Listen for data/filter changes to update row count
+        filterableTableModel.addTableModelListener(e -> updateRowCount());
         
         return panel;
+    }
+
+    private void initColumnMenu() {
+        columnMenu = new JPopupMenu();
+        TableColumnModel columnModel = table.getColumnModel();
+        columnOrder.clear();
+
+        for (int i = 0; i < columnModel.getColumnCount(); i++) {
+            TableColumn column = columnModel.getColumn(i);
+            columnOrder.put(column, i);
+            String name = tableModel.getColumnName(i);
+            JCheckBoxMenuItem item = new JCheckBoxMenuItem(name, true);
+            item.addActionListener(e -> toggleColumnVisibility(column, item.isSelected()));
+            columnMenu.add(item);
+        }
+    }
+
+    private void showColumnMenu(Component anchor) {
+        if (columnMenu != null) {
+            columnMenu.show(anchor, 0, anchor.getHeight());
+        }
+    }
+
+    private void toggleColumnVisibility(TableColumn column, boolean visible) {
+        TableColumnModel columnModel = table.getColumnModel();
+        boolean isVisible = isColumnVisible(columnModel, column);
+        if (visible && !isVisible) {
+            columnModel.addColumn(column);
+            reorderColumns(columnModel);
+        } else if (!visible && isVisible) {
+            columnModel.removeColumn(column);
+        }
+        table.getTableHeader().revalidate();
+        table.getTableHeader().repaint();
+    }
+
+    private boolean isColumnVisible(TableColumnModel columnModel, TableColumn column) {
+        for (int i = 0; i < columnModel.getColumnCount(); i++) {
+            if (columnModel.getColumn(i) == column) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void reorderColumns(TableColumnModel columnModel) {
+        List<TableColumn> columns = new ArrayList<>();
+        for (int i = 0; i < columnModel.getColumnCount(); i++) {
+            columns.add(columnModel.getColumn(i));
+        }
+        columns.sort((a, b) -> Integer.compare(
+                columnOrder.getOrDefault(a, Integer.MAX_VALUE),
+                columnOrder.getOrDefault(b, Integer.MAX_VALUE)
+        ));
+        for (int i = 0; i < columns.size(); i++) {
+            TableColumn column = columns.get(i);
+            int currentIndex = columnModel.getColumnIndex(column.getIdentifier());
+            if (currentIndex != i) {
+                columnModel.moveColumn(currentIndex, i);
+            }
+        }
     }
     
     private void setColumnWidths() {
@@ -193,164 +265,67 @@ public class MainFrame extends JFrame {
         return statusBar;
     }
     
-    private void setupUpdateEngine() {
-        updateEngine.setTableUpdateCallback(() -> {
-            // Trigger table repaint on EDT
-            tableModel.fireAllDataUpdated();
-        });
-    }
-    
     private void setupWindowListener() {
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                logger.info("Application closing...");
-                updateEngine.shutdown();
+                if (windowCloseHandler != null) {
+                    windowCloseHandler.run();
+                }
+                if (priceFlashTimer != null) {
+                    priceFlashTimer.stop();
+                }
             }
         });
     }
     
-    // ==================== Event Handlers ====================
-    
-    private void onOpenCsv() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Open CSV File");
-        chooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
-        
-        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-            File file = chooser.getSelectedFile();
-            loadCsvFromFile(file);
+    // ==================== MainView ====================
+
+    public void setController(MainController controller) {
+        this.controller = controller;
+    }
+
+    private void handleOpenCsv() {
+        if (controller != null) {
+            controller.onOpenCsv();
         }
     }
-    
-    private void onSaveCsv() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Save CSV File");
-        chooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
-        chooser.setSelectedFile(new File("export.csv"));
-        
-        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
-            File file = chooser.getSelectedFile();
-            if (!file.getName().endsWith(".csv")) {
-                file = new File(file.getAbsolutePath() + ".csv");
-            }
-            saveCsvToFile(file);
+
+    private void handleSaveCsv() {
+        if (controller != null) {
+            controller.onSaveCsv();
         }
     }
-    
-    private void onStartPause() {
-        if (updateRunning) {
-            pauseUpdates();
-        } else {
-            startUpdates();
+
+    private void handleStartPause() {
+        if (controller != null) {
+            controller.onStartPause();
         }
     }
-    
-    private void onUnlockAll() {
-        tableModel.getData().forEach(RowData::unlock);
-        setStatus("All rows unlocked");
-        logger.info("All rows unlocked");
-    }
-    
-    // ==================== Data Operations ====================
-    
-    private void loadDefaultCsv() {
-        logger.info("Loading default CSV...");
-        setStatus("Loading default CSV...");
-        
-        CompletableFuture.runAsync(() -> {
-            List<RowData> data = csvRepository.loadDefaultCsv();
-            
-            SwingUtilities.invokeLater(() -> {
-                tableModel.setData(data);
-                updateEngine.setData(tableModel.getData());
-                updateRowCount();
-                setStatus("Loaded %d rows from sample.csv".formatted(data.size()));
-                logger.info("Loaded {} rows from default CSV", data.size());
-            });
-        }).exceptionally(ex -> {
-            logger.error("Failed to load default CSV", ex);
-            SwingUtilities.invokeLater(() -> setStatus("Failed to load CSV: " + ex.getMessage()));
-            return null;
-        });
-    }
-    
-    private void loadCsvFromFile(File file) {
-        logger.info("Loading CSV from file: {}", file.getName());
-        setStatus("Loading " + file.getName() + "...");
-        
-        // Pause updates during load
-        boolean wasRunning = updateRunning;
-        if (wasRunning) {
-            pauseUpdates();
-        }
-        
-        final String fileName = file.getName();
-        
-        CompletableFuture.runAsync(() -> {
-            List<RowData> data = csvRepository.loadCsvFromFile(file);
-            
-            SwingUtilities.invokeLater(() -> {
-                tableModel.setData(data);
-                updateEngine.setData(tableModel.getData());
-                updateRowCount();
-                
-                if (wasRunning) {
-                    startUpdates();
-                }
-                setStatus("Loaded %d rows from %s".formatted(data.size(), fileName));
-                logger.info("Loaded {} rows from {}", data.size(), fileName);
-            });
-        }).exceptionally(ex -> {
-            logger.error("Failed to load CSV from file: {}", fileName, ex);
-            SwingUtilities.invokeLater(() -> {
-                if (wasRunning) {
-                    startUpdates();
-                }
-                setStatus("Failed to load " + fileName + ": " + ex.getMessage());
-            });
-            return null;
-        });
-    }
-    
-    private void saveCsvToFile(File file) {
-        logger.info("Saving CSV to file: {}", file.getName());
-        setStatus("Saving to " + file.getName() + "...");
-        
-        boolean success = csvRepository.saveCsvToFile(tableModel.getData(), file);
-        
-        if (success) {
-            setStatus("Saved %d rows to %s".formatted(tableModel.getRowCount(), file.getName()));
-        } else {
-            setStatus("Failed to save to " + file.getName());
+
+    private void handleUnlockAll() {
+        if (controller != null) {
+            controller.onUnlockAll();
         }
     }
-    
-    // ==================== Update Control ====================
-    
-    private void startUpdates() {
-        updateEngine.start();
-        updateRunning = true;
-        startPauseButton.setText("Pause");
-        setStatus("Real-time updates started");
-        logger.info("Updates started");
+
+    @Override
+    public CsvTableModel getTableModel() {
+        return tableModel;
     }
-    
-    private void pauseUpdates() {
-        updateEngine.pause();
-        updateRunning = false;
-        startPauseButton.setText("Start");
-        setStatus("Real-time updates paused");
-        logger.info("Updates paused");
-    }
-    
-    // ==================== UI Updates ====================
-    
-    private void setStatus(String message) {
+
+    @Override
+    public void setStatus(String message) {
         statusLabel.setText(message);
     }
-    
-    private void updateRowCount() {
+
+    @Override
+    public void setStartPauseLabel(String text) {
+        startPauseButton.setText(text);
+    }
+
+    @Override
+    public void updateRowCount() {
         int total = tableModel.getRowCount();
         int filtered = table.getRowCount();
         
@@ -360,5 +335,38 @@ public class MainFrame extends JFrame {
             rowCountLabel.setText("Rows: %d / %d".formatted(filtered, total));
         }
     }
-}
 
+    @Override
+    public File promptOpenCsv() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Open CSV File");
+        chooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
+
+        if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            return chooser.getSelectedFile();
+        }
+        return null;
+    }
+
+    @Override
+    public File promptSaveCsv() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setDialogTitle("Save CSV File");
+        chooser.setFileFilter(new FileNameExtensionFilter("CSV Files", "csv"));
+        chooser.setSelectedFile(new File("export.csv"));
+
+        if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            if (!file.getName().endsWith(".csv")) {
+                file = new File(file.getAbsolutePath() + ".csv");
+            }
+            return file;
+        }
+        return null;
+    }
+
+    @Override
+    public void addWindowCloseHandler(Runnable handler) {
+        this.windowCloseHandler = handler;
+    }
+}

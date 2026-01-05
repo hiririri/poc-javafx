@@ -29,6 +29,7 @@ public class RowData {
     private String status;
     private String lastUpdate;
     private long editLockUntil;
+    private long lastPriceChangeAt;
     
     public RowData() {
     }
@@ -74,12 +75,17 @@ public class RowData {
         double oldValue = this.price;
         this.previousPrice = this.price;
         this.price = value;
+        if (Double.compare(oldValue, value) != 0) {
+            lastPriceChangeAt = System.currentTimeMillis();
+        }
         pcs.firePropertyChange("price", oldValue, value);
     }
     
     // Previous price for tracking changes
     public double getPreviousPrice() { return previousPrice; }
     public void setPreviousPrice(double value) { previousPrice = value; }
+
+    public long getLastPriceChangeAt() { return lastPriceChangeAt; }
     
     // Qty property
     public int getQty() { return qty; }
@@ -153,4 +159,3 @@ public class RowData {
                 id, symbol, price, qty, status);
     }
 }
-

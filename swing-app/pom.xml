@@ -26,6 +26,20 @@
             <artifactId>flatlaf</artifactId>
         </dependency>
 
+        <!-- JIDE Grids for FilterableTableModel + SortableTable -->
+        <dependency>
+            <groupId>com.jidesoft</groupId>
+            <artifactId>jide-grids</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.jidesoft</groupId>
+            <artifactId>jide-oss</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.jidesoft</groupId>
+            <artifactId>jide-common</artifactId>
+        </dependency>
+
         <!-- SLF4J for logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
@@ -73,4 +87,3 @@
         </plugins>
     </build>
 </project>
-

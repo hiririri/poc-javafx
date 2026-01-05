@@ -1,7 +1,9 @@
 package com.csvmonitor.swing;
 
+import com.csvmonitor.swing.controller.MainController;
+import com.csvmonitor.swing.model.CsvRepository;
+import com.csvmonitor.swing.model.UpdateEngine;
 import com.csvmonitor.swing.view.MainFrame;
-import com.formdev.flatlaf.FlatLightLaf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,7 +13,7 @@ import javax.swing.*;
  * Main Swing Application entry point.
  * 
  * This class bootstraps the application:
- * - Sets up FlatLaf look and feel for modern appearance
+ * - Sets up a JIDE-compatible look and feel
  * - Creates the main window
  */
 public class App {
@@ -21,14 +23,11 @@ public class App {
     public static void main(String[] args) {
         logger.info("Starting CSV Table Monitor (Swing)...");
         
-        // Set up FlatLaf look and feel
+        // Set up Metal LAF to avoid JIDE's Windows LAF dependency on non-Windows runtimes.
         try {
-            FlatLightLaf.setup();
-            UIManager.put("Table.showHorizontalLines", true);
-            UIManager.put("Table.showVerticalLines", true);
-            UIManager.put("Table.intercellSpacing", new java.awt.Dimension(1, 1));
+            UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
         } catch (Exception e) {
-            logger.warn("Failed to set FlatLaf look and feel, using system default", e);
+            logger.warn("Failed to set cross-platform look and feel, using system default", e);
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
             } catch (Exception ex) {
@@ -39,9 +38,15 @@ public class App {
         // Create and show main window on EDT
         SwingUtilities.invokeLater(() -> {
             MainFrame mainFrame = new MainFrame();
+            MainController controller = new MainController(
+                    mainFrame,
+                    new CsvRepository(),
+                    new UpdateEngine()
+            );
+            mainFrame.setController(controller);
+            controller.onViewReady();
             mainFrame.setVisible(true);
             logger.info("Application started successfully");
         });
     }
 }
-
