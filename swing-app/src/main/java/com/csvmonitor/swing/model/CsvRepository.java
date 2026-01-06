@@ -1,13 +1,21 @@
 package com.csvmonitor.swing.model;
 
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -97,75 +105,77 @@ public class CsvRepository {
     /**
      * Parse CSV content from a BufferedReader.
      */
-    private ParseResult parseCsv(BufferedReader reader) throws IOException {
+    private ParseResult parseCsv(Reader reader) throws IOException {
         var rows = new ArrayList<RowData>();
         int lineNumber = 0;
         int errorCount = 0;
-        
-        String line;
-        while ((line = reader.readLine()) != null) {
-            lineNumber++;
-            
-            // Skip header line
-            if (lineNumber == 1 && isHeaderLine(line)) {
-                logger.debug("Skipping header line: {}", line);
-                continue;
+
+        try (CSVReader csvReader = new CSVReader(reader)) {
+            String[] columns;
+            while ((columns = csvReader.readNext()) != null) {
+                lineNumber++;
+
+                if (lineNumber == 1 && isHeaderLine(columns)) {
+                    logger.debug("Skipping header line: {}", Arrays.toString(columns));
+                    continue;
+                }
+
+                if (isEmptyRow(columns)) {
+                    continue;
+                }
+
+                var result = parseRow(columns, lineNumber);
+
+                if (result.isPresent()) {
+                    rows.add(result.get());
+                } else {
+                    errorCount++;
+                }
             }
-            
-            // Skip empty lines
-            if (line.isBlank()) {
-                continue;
-            }
-            
-            // Parse row and handle result
-            var result = parseRow(line, lineNumber);
-            
-            if (result.isPresent()) {
-                rows.add(result.get());
-            } else {
-                errorCount++;
-            }
+        } catch (CsvException e) {
+            throw new IOException("Failed to parse CSV", e);
         }
-        
+
         logger.info("Parsed {} rows successfully, {} errors", rows.size(), errorCount);
         return new ParseResult(rows, errorCount);
     }
-    
+
     /**
      * Check if a line is a header line.
      */
-    private boolean isHeaderLine(String line) {
-        var lower = line.toLowerCase();
-        return lower.contains("id") && lower.contains("symbol");
+    private boolean isHeaderLine(String[] columns) {
+        if (columns.length < 2) {
+            return false;
+        }
+        return "id".equalsIgnoreCase(columns[0].trim())
+                && "symbol".equalsIgnoreCase(columns[1].trim());
     }
-    
+
     /**
      * Parse a single CSV row.
      */
-    private Optional<RowData> parseRow(String line, int lineNumber) {
+    private Optional<RowData> parseRow(String[] columns, int lineNumber) {
         try {
-            String[] parts = line.split(",", -1);
-            
-            // Pad array if needed
-            if (parts.length < EXPECTED_COLUMNS) {
-                logger.warn("Line {} has insufficient columns ({}), padding", lineNumber, parts.length);
-                parts = padArray(parts, EXPECTED_COLUMNS);
+            String[] parts = padArray(columns, EXPECTED_COLUMNS);
+
+            // Normalize nulls and trim values
+            for (int i = 0; i < parts.length; i++) {
+                parts[i] = parts[i] == null ? "" : parts[i].trim();
             }
-            
-            // Parse fields with safe defaults
-            int id = parseNumber(parts[0].trim(), Integer.class).orElse(lineNumber);
-            String symbol = parts[1].trim().isEmpty() ? "UNKNOWN" : parts[1].trim();
-            double price = parseNumber(parts[2].trim(), Double.class).orElse(0.0);
-            int qty = parseNumber(parts[3].trim(), Integer.class).orElse(0);
-            String status = normalizeStatus(parts[4].trim());
-            String lastUpdate = parts[5].trim().isEmpty() 
-                    ? LocalDateTime.now().format(ISO_FORMATTER) 
-                    : parts[5].trim();
-            
+
+            int id = parseNumber(parts[0], Integer.class).orElse(lineNumber);
+            String symbol = parts[1].isEmpty() ? "UNKNOWN" : parts[1];
+            double price = parseNumber(parts[2], Double.class).orElse(0.0);
+            int qty = parseNumber(parts[3], Integer.class).orElse(0);
+            String status = normalizeStatus(parts[4]);
+            String lastUpdate = parts[5].isEmpty()
+                    ? LocalDateTime.now().format(ISO_FORMATTER)
+                    : parts[5];
+
             return Optional.of(new RowData(id, symbol, price, qty, status, lastUpdate));
-            
+
         } catch (Exception e) {
-            logger.warn("Error parsing line {}: {} - {}", lineNumber, line, e.getMessage());
+            logger.warn("Error parsing line {}: {} - {}", lineNumber, Arrays.toString(columns), e.getMessage());
             return Optional.empty();
         }
     }
@@ -217,11 +227,20 @@ public class CsvRepository {
      */
     private String[] padArray(String[] source, int length) {
         var padded = new String[length];
-        System.arraycopy(source, 0, padded, 0, source.length);
-        for (int i = source.length; i < length; i++) {
+        int copyLength = Math.min(source.length, length);
+        System.arraycopy(source, 0, padded, 0, copyLength);
+        for (int i = copyLength; i < length; i++) {
             padded[i] = "";
         }
         return padded;
+    }
+
+    /**
+     * Determine if the row is effectively empty.
+     */
+    private boolean isEmptyRow(String[] columns) {
+        return Arrays.stream(columns)
+                .allMatch(value -> value == null || value.isBlank());
     }
     
     /**
@@ -237,4 +256,3 @@ public class CsvRepository {
         return "";
     }
 }
-
