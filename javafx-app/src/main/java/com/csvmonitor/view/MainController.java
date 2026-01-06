@@ -19,6 +19,14 @@ import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import javafx.stage.FileChooser;
 import javafx.util.Duration;
+import org.drombler.commons.docking.DockableKind;
+import org.drombler.commons.docking.DockablePreferences;
+import org.drombler.commons.docking.DockingAreaDescriptor;
+import org.drombler.commons.docking.DockingAreaKind;
+import org.drombler.commons.docking.LayoutConstraintsDescriptor;
+import org.drombler.commons.docking.fx.DockingPane;
+import org.drombler.commons.docking.fx.FXDockableData;
+import org.drombler.commons.docking.fx.FXDockableEntry;
 import org.controlsfx.control.tableview2.FilteredTableColumn;
 import org.controlsfx.control.tableview2.FilteredTableView;
 import org.controlsfx.control.tableview2.filter.filtereditor.SouthFilter;
@@ -26,10 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Controller for the main view (View layer in MVVM pattern).
@@ -75,12 +80,18 @@ public class MainController {
     private final TableViewModel viewModel = new TableViewModel();
     private final List<FilteredTableColumn<RowViewModel, ?>> columns = new ArrayList<>();
 
-    private BorderPane rootPane;
+    private DockingPane dockingPane;
     private VBox tableContainer;
     private FilteredTableView<RowViewModel> filteredTableView;
     private Button startPauseButton;
     private Label statusLabel;
     private Label rowCountLabel;
+    private Label detailIdValue;
+    private Label detailSymbolValue;
+    private Label detailPriceValue;
+    private Label detailQtyValue;
+    private Label detailStatusValue;
+    private Label detailUpdateValue;
 
     // ==================== Public Methods ====================
 
@@ -88,25 +99,22 @@ public class MainController {
      * Creates and initializes the view.
      * @return the root node of the view
      */
-    public BorderPane createView() {
+    public DockingPane createView() {
         logger.info("Creating MainController view...");
 
-        rootPane = new BorderPane();
-        rootPane.getStyleClass().add("root-pane");
-        rootPane.setTop(createToolbar());
-        rootPane.setCenter(createTableSection());
-        rootPane.setBottom(createStatusBar());
+        dockingPane = createDockLayout();
 
         createFilteredTableView();
         setupTableColumns();
         setupTableBinding();
         setupColumnFilters();
         setupToolbarBindings();
+        setupDetailsBinding();
 
         Platform.runLater(viewModel::loadDefaultCsv);
 
         logger.info("MainController view created");
-        return rootPane;
+        return dockingPane;
     }
 
     /**
@@ -182,6 +190,95 @@ public class MainController {
         tableContainer.getStyleClass().add("table-container");
         tableContainer.setPadding(new Insets(8));
         return tableContainer;
+    }
+
+    private DockingPane createDockLayout() {
+        DockingPane pane = new DockingPane();
+        pane.getStyleClass().add("root-pane");
+
+        VBox toolbar = createToolbar();
+        VBox tableSection = createTableSection();
+        HBox statusBar = createStatusBar();
+        VBox detailsPanel = createDetailsPanel();
+
+        DockingAreaDescriptor toolbarArea = createDockingArea(
+                "toolbar-area", DockingAreaKind.VIEW, 0, List.of(),
+                LayoutConstraintsDescriptor.prefHeight(110), true);
+        DockingAreaDescriptor contentArea = createDockingArea(
+                "content-area", DockingAreaKind.VIEW, 0, List.of(1),
+                LayoutConstraintsDescriptor.flexible(), true);
+        DockingAreaDescriptor detailsArea = createDockingArea(
+                "details-area", DockingAreaKind.VIEW, 1, List.of(1),
+                LayoutConstraintsDescriptor.prefWidth(280), true);
+        DockingAreaDescriptor statusArea = createDockingArea(
+                "status-area", DockingAreaKind.VIEW, 2, List.of(),
+                LayoutConstraintsDescriptor.prefHeight(44), true);
+
+        pane.getDockingAreaDescriptors().addAll(Set.of(toolbarArea, contentArea, detailsArea, statusArea));
+
+        pane.getDockables().addAll(Set.of(createDockable(toolbar, "Toolbar", "toolbar-area"),
+                                          createDockable(tableSection, "Table", "content-area"),
+                                          createDockable(detailsPanel, "Details", "details-area"),
+                                          createDockable(statusBar, "Status", "status-area")));
+
+        return pane;
+    }
+
+    private DockingAreaDescriptor createDockingArea(String id, DockingAreaKind kind, int position,
+                                                    List<Integer> parentPath,
+                                                    LayoutConstraintsDescriptor layoutConstraints,
+                                                    boolean permanent) {
+        DockingAreaDescriptor area = new DockingAreaDescriptor();
+        area.setId(id);
+        area.setKind(kind);
+        area.setPosition(position);
+        area.setParentPath(parentPath);
+        area.setLayoutConstraints(layoutConstraints);
+        area.setPermanent(permanent);
+        return area;
+    }
+
+    private FXDockableEntry createDockable(Region content, String title, String areaId) {
+        FXDockableData data = new FXDockableData();
+        data.setTitle(title);
+        DockablePreferences preferences = new DockablePreferences(areaId, 0);
+        return new FXDockableEntry(content, DockableKind.VIEW, data, preferences);
+    }
+
+    private VBox createDetailsPanel() {
+        Label header = new Label("Selection Details");
+        header.getStyleClass().add("details-title");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(6);
+
+        detailIdValue = new Label("-");
+        detailSymbolValue = new Label("-");
+        detailPriceValue = new Label("-");
+        detailQtyValue = new Label("-");
+        detailStatusValue = new Label("-");
+        detailUpdateValue = new Label("-");
+
+        addDetailRow(grid, 0, "ID", detailIdValue);
+        addDetailRow(grid, 1, "Symbol", detailSymbolValue);
+        addDetailRow(grid, 2, "Price", detailPriceValue);
+        addDetailRow(grid, 3, "Qty", detailQtyValue);
+        addDetailRow(grid, 4, "Status", detailStatusValue);
+        addDetailRow(grid, 5, "Last Update", detailUpdateValue);
+
+        VBox panel = new VBox(10, header, grid);
+        panel.getStyleClass().add("details-panel");
+        panel.setPadding(new Insets(10));
+
+        return panel;
+    }
+
+    private void addDetailRow(GridPane grid, int row, String label, Label value) {
+        Label key = new Label(label + ":");
+        key.getStyleClass().add("details-label");
+        value.getStyleClass().add("details-value");
+        grid.addRow(row, key, value);
     }
 
     private HBox createStatusBar() {
@@ -318,6 +415,31 @@ public class MainController {
                             ? "Rows: %d".formatted(total)
                             : "Rows: %d / %d".formatted(filtered, total);
                 }, filteredTableView.predicateProperty(), viewModel.totalRowCountProperty()));
+    }
+
+    private void setupDetailsBinding() {
+        filteredTableView.getSelectionModel().selectedItemProperty().addListener(
+                (obs, oldSelection, newSelection) -> updateDetailsPanel(newSelection));
+        updateDetailsPanel(null);
+    }
+
+    private void updateDetailsPanel(RowViewModel row) {
+        if (row == null) {
+            detailIdValue.setText("-");
+            detailSymbolValue.setText("-");
+            detailPriceValue.setText("-");
+            detailQtyValue.setText("-");
+            detailStatusValue.setText("-");
+            detailUpdateValue.setText("-");
+            return;
+        }
+
+        detailIdValue.setText(String.valueOf(row.getId()));
+        detailSymbolValue.setText(row.getSymbol());
+        detailPriceValue.setText(String.format("%.5f", row.getPrice()));
+        detailQtyValue.setText(String.valueOf(row.getQty()));
+        detailStatusValue.setText(row.getStatus());
+        detailUpdateValue.setText(row.getLastUpdate());
     }
 
     // ==================== Event Handlers ====================

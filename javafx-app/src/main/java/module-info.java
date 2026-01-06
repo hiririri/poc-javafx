@@ -2,6 +2,8 @@ module com.csvmonitor {
     requires javafx.controls;
     requires javafx.fxml;
     requires org.controlsfx.controls;
+    requires org.drombler.commons.docking.fx;
+    requires org.drombler.commons.docking.core;
     requires org.slf4j;
     requires javafx.base;
     requires java.prefs;

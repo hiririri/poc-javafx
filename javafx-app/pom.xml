@@ -35,6 +35,11 @@
             <artifactId>controlsfx</artifactId>
         </dependency>
 
+       <dependency>
+           <groupId>org.drombler.fx</groupId>
+           <artifactId>drombler-fx-core-docking</artifactId>
+       </dependency>
+
         <!-- SLF4J for logging -->
         <dependency>
             <groupId>org.slf4j</groupId>

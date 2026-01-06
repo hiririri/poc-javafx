@@ -53,6 +53,12 @@
                 <version>${controlsfx.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.drombler.fx</groupId>
+                <artifactId>drombler-fx-core-docking</artifactId>
+                <version>0.14.1</version>
+            </dependency>
+
             <!-- SLF4J for logging -->
             <dependency>
                 <groupId>org.slf4j</groupId>
