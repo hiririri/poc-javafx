@@ -377,28 +377,11 @@ public class MainController {
         row.getStyleClass().removeAll(ROW_STATUS_CLASSES);
         RowViewModel rowViewModel = row.getItem();
         if (rowViewModel == null || row.isEmpty()) {
-            row.setStyle(null);
             return;
         }
         String styleClass = rowViewModel.getRowStyleClass();
         if (styleClass != null && !styleClass.isEmpty()) {
             row.getStyleClass().add(styleClass);
-            // Also apply inline style for FilteredTableView/TableView2 compatibility
-            String bgColor = switch (styleClass) {
-                case "row-alert" -> ALERT_BG;
-                case "row-normal" -> NORMAL_BG;
-                case "row-pending" -> PENDING_BG;
-                case "row-active" -> ACTIVE_BG;
-                case "row-closed" -> CLOSED_BG;
-                default -> null;
-            };
-            if (bgColor != null) {
-                row.setStyle("-fx-background-color: " + bgColor + ";");
-            } else {
-                row.setStyle(null);
-            }
-        } else {
-            row.setStyle(null);
         }
     }
 
@@ -415,71 +398,61 @@ public class MainController {
         }
     }
 
-    // ==================== Custom Cell Classes ====================
-
-    // Cell style classes for each status
-    private static final List<String> CELL_STATUS_CLASSES = List.of(
-            "cell-alert", "cell-normal", "cell-pending", "cell-active", "cell-closed");
-
     /**
-     * Get cell style class based on row status.
+     * Get background color for a row based on its status.
      */
-    private String getCellStyleClass(RowViewModel row) {
-        if (row == null) return null;
-        String rowStyle = row.getRowStyleClass();
-        if (rowStyle == null || rowStyle.isEmpty()) return null;
-        // Convert row-xxx to cell-xxx
-        return rowStyle.replace("row-", "cell-");
-    }
-
-    /**
-     * Apply row-based style class to a cell (for CSS-based background coloring).
-     */
-    private void applyCellStyle(TableCell<RowViewModel, ?> cell) {
-        // Remove old status classes
-        cell.getStyleClass().removeAll(CELL_STATUS_CLASSES);
-        
-        int index = cell.getIndex();
+    private String getRowBackground(int index) {
         if (index < 0 || index >= filteredTableView.getItems().size()) {
-            return;
+            return null;
         }
         RowViewModel row = filteredTableView.getItems().get(index);
-        String styleClass = getCellStyleClass(row);
-        if (styleClass != null) {
-            cell.getStyleClass().add(styleClass);
-        }
+        if (row == null) return null;
+        String styleClass = row.getRowStyleClass();
+        if (styleClass == null || styleClass.isEmpty()) return null;
+        return switch (styleClass) {
+            case "row-alert" -> ALERT_BG;
+            case "row-normal" -> NORMAL_BG;
+            case "row-pending" -> PENDING_BG;
+            case "row-active" -> ACTIVE_BG;
+            case "row-closed" -> CLOSED_BG;
+            default -> null;
+        };
     }
 
+    // ==================== Custom Cell Classes ====================
+
     /**
-     * Text cell with row-based background styling.
+     * Text cell with row-based background color.
      */
     private class TransparentTextCell extends TableCell<RowViewModel, String> {
         @Override
         protected void updateItem(String item, boolean empty) {
             super.updateItem(item, empty);
-            getStyleClass().removeAll(CELL_STATUS_CLASSES);
             if (empty || item == null) {
                 setText(null);
+                setStyle(null);
             } else {
                 setText(item);
-                applyCellStyle(this);
+                String bg = getRowBackground(getIndex());
+                setStyle(bg != null ? "-fx-background-color: " + bg + ";" : null);
             }
         }
     }
 
     /**
-     * Number cell with row-based background styling.
+     * Number cell with row-based background color.
      */
     private class TransparentNumberCell extends TableCell<RowViewModel, Number> {
         @Override
         protected void updateItem(Number item, boolean empty) {
             super.updateItem(item, empty);
-            getStyleClass().removeAll(CELL_STATUS_CLASSES);
             if (empty || item == null) {
                 setText(null);
+                setStyle(null);
             } else {
                 setText(item.toString());
-                applyCellStyle(this);
+                String bg = getRowBackground(getIndex());
+                setStyle(bg != null ? "-fx-background-color: " + bg + ";" : null);
             }
         }
     }
@@ -528,7 +501,6 @@ public class MainController {
         @Override
         protected void updateItem(Number item, boolean empty) {
             super.updateItem(item, empty);
-            getStyleClass().removeAll(CELL_STATUS_CLASSES);
 
             if (empty || item == null) {
                 clearCell();
@@ -550,7 +522,10 @@ public class MainController {
 
             handleFlashAnimation(value, index);
             applyPriceStyle();
-            applyCellStyle(this);
+            
+            // Apply row background
+            String bg = getRowBackground(index);
+            setStyle(bg != null ? "-fx-background-color: " + bg + ";" : null);
 
             lastIndex = index;
             lastValue = value;
@@ -559,7 +534,7 @@ public class MainController {
 
         private void clearCell() {
             setGraphic(null);
-            getStyleClass().removeAll(CELL_STATUS_CLASSES);
+            setStyle(null);
             prefixText.setText("");
             highlightText.setText("");
             suffixText.setText("");
@@ -622,15 +597,16 @@ public class MainController {
         protected void updateItem(String item, boolean empty) {
             super.updateItem(item, empty);
             getStyleClass().removeAll(STATUS_CLASSES);
-            getStyleClass().removeAll(CELL_STATUS_CLASSES);
 
             if (empty || item == null) {
                 setText(null);
+                setStyle(null);
                 return;
             }
 
             setText(item);
 
+            // Apply status text color
             RowViewModel row = getTableRow() != null ? getTableRow().getItem() : null;
             if (row != null) {
                 String styleClass = row.getStatusStyleClass();
@@ -638,7 +614,10 @@ public class MainController {
                     getStyleClass().add(styleClass);
                 }
             }
-            applyCellStyle(this);
+            
+            // Apply row background
+            String bg = getRowBackground(getIndex());
+            setStyle(bg != null ? "-fx-background-color: " + bg + ";" : null);
         }
     }
 }

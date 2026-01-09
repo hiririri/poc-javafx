@@ -7,51 +7,61 @@
 
 /* ==================== Conditional Formatting (Real-time Updates) ==================== */
 
-/* ==================== Cell Background by Status ==================== */
+/* ==================== Row Background by Status ==================== */
 
 /* 
- * Note: For FilteredTableView (TableView2), we apply background color 
- * directly on cells, not rows. This ensures proper rendering.
+ * Style cells based on row's style class.
+ * Pattern: .table-row-cell.row-xxx > .table-cell
  */
 
 /* ALERT status - red background */
-.cell-alert {
+.table-row-cell.row-alert > .table-cell {
     -fx-background-color: #ffcccc;
+    -fx-background-insets: 0 0 1 0;
 }
-.table-row-cell:selected > .cell-alert {
-    -fx-background-color: #ff999980;
+.table-row-cell.row-alert:selected > .table-cell {
+    -fx-background-color: #ff999990;
+    -fx-background-insets: 0 0 1 0;
 }
 
 /* NORMAL status - light green background */
-.cell-normal {
+.table-row-cell.row-normal > .table-cell {
     -fx-background-color: #e6ffe6;
+    -fx-background-insets: 0 0 1 0;
 }
-.table-row-cell:selected > .cell-normal {
-    -fx-background-color: #b3ffb380;
+.table-row-cell.row-normal:selected > .table-cell {
+    -fx-background-color: #b3ffb390;
+    -fx-background-insets: 0 0 1 0;
 }
 
 /* PENDING status - light orange/yellow background */
-.cell-pending {
+.table-row-cell.row-pending > .table-cell {
     -fx-background-color: #fff2cc;
+    -fx-background-insets: 0 0 1 0;
 }
-.table-row-cell:selected > .cell-pending {
-    -fx-background-color: #ffd96680;
+.table-row-cell.row-pending:selected > .table-cell {
+    -fx-background-color: #ffd96690;
+    -fx-background-insets: 0 0 1 0;
 }
 
 /* ACTIVE status - light blue background */
-.cell-active {
+.table-row-cell.row-active > .table-cell {
     -fx-background-color: #cce6ff;
+    -fx-background-insets: 0 0 1 0;
 }
-.table-row-cell:selected > .cell-active {
-    -fx-background-color: #80bfff80;
+.table-row-cell.row-active:selected > .table-cell {
+    -fx-background-color: #80bfff90;
+    -fx-background-insets: 0 0 1 0;
 }
 
 /* CLOSED status - light gray background */
-.cell-closed {
+.table-row-cell.row-closed > .table-cell {
     -fx-background-color: #e6e6e6;
+    -fx-background-insets: 0 0 1 0;
 }
-.table-row-cell:selected > .cell-closed {
-    -fx-background-color: #bfbfbf80;
+.table-row-cell.row-closed:selected > .table-cell {
+    -fx-background-color: #bfbfbf90;
+    -fx-background-insets: 0 0 1 0;
 }
 
 /* Locked row (recently edited) - orange left border */
