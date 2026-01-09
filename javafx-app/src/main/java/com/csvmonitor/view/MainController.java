@@ -419,6 +419,17 @@ public class MainController {
         };
     }
 
+    /**
+     * Build inline style for cell background.
+     * Uses multiple properties to ensure it overrides default styles on all platforms.
+     */
+    private String buildCellStyle(String bgColor) {
+        if (bgColor == null) return null;
+        return "-fx-background-color: " + bgColor + "; " +
+               "-fx-background-insets: 0; " +
+               "-fx-background: " + bgColor + ";";
+    }
+
     // ==================== Custom Cell Classes ====================
 
     /**
@@ -433,8 +444,7 @@ public class MainController {
                 setStyle(null);
             } else {
                 setText(item);
-                String bg = getRowBackground(getIndex());
-                setStyle(bg != null ? "-fx-background-color: " + bg + ";" : null);
+                setStyle(buildCellStyle(getRowBackground(getIndex())));
             }
         }
     }
@@ -451,8 +461,7 @@ public class MainController {
                 setStyle(null);
             } else {
                 setText(item.toString());
-                String bg = getRowBackground(getIndex());
-                setStyle(bg != null ? "-fx-background-color: " + bg + ";" : null);
+                setStyle(buildCellStyle(getRowBackground(getIndex())));
             }
         }
     }
@@ -524,8 +533,7 @@ public class MainController {
             applyPriceStyle();
             
             // Apply row background
-            String bg = getRowBackground(index);
-            setStyle(bg != null ? "-fx-background-color: " + bg + ";" : null);
+            setStyle(buildCellStyle(getRowBackground(index)));
 
             lastIndex = index;
             lastValue = value;
@@ -616,8 +624,7 @@ public class MainController {
             }
             
             // Apply row background
-            String bg = getRowBackground(getIndex());
-            setStyle(bg != null ? "-fx-background-color: " + bg + ";" : null);
+            setStyle(buildCellStyle(getRowBackground(getIndex())));
         }
     }
 }
