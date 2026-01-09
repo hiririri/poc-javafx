@@ -6,19 +6,20 @@ import com.csvmonitor.viewmodel.TableViewModel;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
+import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
-import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.scene.text.TextFlow;
 import javafx.stage.FileChooser;
 import javafx.util.Duration;
+import javafx.scene.CacheHint;
 import org.controlsfx.control.tableview2.FilteredTableColumn;
 import org.controlsfx.control.tableview2.FilteredTableView;
 import org.controlsfx.control.tableview2.filter.filtereditor.SouthFilter;
@@ -26,10 +27,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Controller for the main view (View layer in MVVM pattern).
@@ -46,29 +46,9 @@ public class MainController {
 
     // ==================== Constants ====================
 
-    /** Background colors for each status type */
-    private static final Map<String, Color> STATUS_BG_COLORS = new HashMap<>();
-    static {
-        // ALERT - red
-        STATUS_BG_COLORS.put("ALERT", Color.web("#ffcccc"));
-        STATUS_BG_COLORS.put("WARN", Color.web("#ffcccc"));
-        STATUS_BG_COLORS.put("WARNING", Color.web("#ffcccc"));
-        // NORMAL - green
-        STATUS_BG_COLORS.put("NORMAL", Color.web("#e6ffe6"));
-        STATUS_BG_COLORS.put("OK", Color.web("#e6ffe6"));
-        STATUS_BG_COLORS.put("GOOD", Color.web("#e6ffe6"));
-        // PENDING - orange/yellow
-        STATUS_BG_COLORS.put("PENDING", Color.web("#fff2cc"));
-        STATUS_BG_COLORS.put("WAIT", Color.web("#fff2cc"));
-        // ACTIVE - blue
-        STATUS_BG_COLORS.put("ACTIVE", Color.web("#cce6ff"));
-        STATUS_BG_COLORS.put("LIVE", Color.web("#cce6ff"));
-        STATUS_BG_COLORS.put("RUNNING", Color.web("#cce6ff"));
-        // CLOSED - gray
-        STATUS_BG_COLORS.put("CLOSED", Color.web("#e6e6e6"));
-        STATUS_BG_COLORS.put("DONE", Color.web("#e6e6e6"));
-        STATUS_BG_COLORS.put("COMPLETE", Color.web("#e6e6e6"));
-    }
+    private static final List<String> ROW_STATUS_CLASSES = List.of(
+            "row-alert", "row-normal", "row-pending", "row-active", "row-closed");
+    private static final String SELECTED_ROW_CLASS = "row-selected";
 
     // ==================== Fields ====================
 
@@ -207,6 +187,30 @@ public class MainController {
         filteredTableView.getStyleClass().add("data-table");
         filteredTableView.setEditable(false);
         filteredTableView.setTableMenuButtonVisible(true);
+        filteredTableView.setFixedCellSize(24);
+        filteredTableView.setRowFactory(tableView -> {
+            TableRow<RowViewModel> row = new TableRow<>() {
+                private final ChangeListener<String> rowStyleListener =
+                        (obs, oldValue, newValue) -> applyRowStyle(this);
+                private RowViewModel lastItem;
+
+                @Override
+                protected void updateItem(RowViewModel item, boolean empty) {
+                    if (lastItem != null) {
+                        lastItem.rowStyleClassProperty().removeListener(rowStyleListener);
+                    }
+                    super.updateItem(item, empty);
+                    lastItem = empty ? null : item;
+                    if (lastItem != null) {
+                        lastItem.rowStyleClassProperty().addListener(rowStyleListener);
+                    }
+                    applyRowStyle(this);
+                    applyRowSelectionStyle(this);
+                }
+            };
+            row.selectedProperty().addListener((obs, oldValue, newValue) -> applyRowSelectionStyle(row));
+            return row;
+        });
 
         Label placeholder = new Label("No data loaded. Click 'Open CSV' to load data.");
         placeholder.getStyleClass().add("placeholder-text");
@@ -237,11 +241,13 @@ public class MainController {
                 ((FilteredTableColumn<RowViewModel, String>) column)
                         .setCellFactory(col -> new StatusTableCell());
             } else if (config.isNumberColumn()) {
+                // Number columns with transparent background
                 ((FilteredTableColumn<RowViewModel, Number>) column)
-                        .setCellFactory(col -> new ColoredCell<>(Pos.CENTER_RIGHT));
+                        .setCellFactory(col -> new TransparentNumberCell());
             } else {
+                // String columns with transparent background
                 ((FilteredTableColumn<RowViewModel, String>) column)
-                        .setCellFactory(col -> new ColoredCell<>(Pos.CENTER_LEFT));
+                        .setCellFactory(col -> new TransparentTextCell());
             }
         }
 
@@ -355,44 +361,125 @@ public class MainController {
         viewModel.unlockAllRows();
     }
 
-    // ==================== Cell Background Helper ====================
+    // ==================== Row Styling Helper ====================
 
-    private Color getStatusBackgroundColor(String status) {
-        return status == null ? null : STATUS_BG_COLORS.get(status.toUpperCase());
+    // Background colors for each status
+    private static final String ALERT_BG = "#ffcccc";
+    private static final String NORMAL_BG = "#e6ffe6";
+    private static final String PENDING_BG = "#fff2cc";
+    private static final String ACTIVE_BG = "#cce6ff";
+    private static final String CLOSED_BG = "#e6e6e6";
+
+    private void applyRowStyle(TableRow<RowViewModel> row) {
+        if (row == null) {
+            return;
+        }
+        row.getStyleClass().removeAll(ROW_STATUS_CLASSES);
+        RowViewModel rowViewModel = row.getItem();
+        if (rowViewModel == null || row.isEmpty()) {
+            row.setStyle(null);
+            return;
+        }
+        String styleClass = rowViewModel.getRowStyleClass();
+        if (styleClass != null && !styleClass.isEmpty()) {
+            row.getStyleClass().add(styleClass);
+            // Also apply inline style for FilteredTableView/TableView2 compatibility
+            String bgColor = switch (styleClass) {
+                case "row-alert" -> ALERT_BG;
+                case "row-normal" -> NORMAL_BG;
+                case "row-pending" -> PENDING_BG;
+                case "row-active" -> ACTIVE_BG;
+                case "row-closed" -> CLOSED_BG;
+                default -> null;
+            };
+            if (bgColor != null) {
+                row.setStyle("-fx-background-color: " + bgColor + ";");
+            } else {
+                row.setStyle(null);
+            }
+        } else {
+            row.setStyle(null);
+        }
     }
 
-    private void applyCellBackground(TableCell<RowViewModel, ?> cell) {
-        RowViewModel row = cell.getTableRow() != null ? cell.getTableRow().getItem() : null;
-        if (row != null) {
-            Color color = getStatusBackgroundColor(row.getStatus());
-            if (color != null) {
-                cell.setBackground(new Background(new BackgroundFill(color, CornerRadii.EMPTY, Insets.EMPTY)));
-                return;
-            }
+    private void applyRowSelectionStyle(TableRow<RowViewModel> row) {
+        if (row == null) {
+            return;
         }
-        cell.setBackground(Background.EMPTY);
+        if (row.isSelected()) {
+            if (!row.getStyleClass().contains(SELECTED_ROW_CLASS)) {
+                row.getStyleClass().add(SELECTED_ROW_CLASS);
+            }
+        } else {
+            row.getStyleClass().remove(SELECTED_ROW_CLASS);
+        }
     }
 
     // ==================== Custom Cell Classes ====================
 
-    /**
-     * Generic cell with background color based on row status.
-     */
-    private class ColoredCell<T> extends TableCell<RowViewModel, T> {
-        
-        ColoredCell(Pos alignment) {
-            setAlignment(alignment);
-        }
+    // Cell style classes for each status
+    private static final List<String> CELL_STATUS_CLASSES = List.of(
+            "cell-alert", "cell-normal", "cell-pending", "cell-active", "cell-closed");
 
+    /**
+     * Get cell style class based on row status.
+     */
+    private String getCellStyleClass(RowViewModel row) {
+        if (row == null) return null;
+        String rowStyle = row.getRowStyleClass();
+        if (rowStyle == null || rowStyle.isEmpty()) return null;
+        // Convert row-xxx to cell-xxx
+        return rowStyle.replace("row-", "cell-");
+    }
+
+    /**
+     * Apply row-based style class to a cell (for CSS-based background coloring).
+     */
+    private void applyCellStyle(TableCell<RowViewModel, ?> cell) {
+        // Remove old status classes
+        cell.getStyleClass().removeAll(CELL_STATUS_CLASSES);
+        
+        int index = cell.getIndex();
+        if (index < 0 || index >= filteredTableView.getItems().size()) {
+            return;
+        }
+        RowViewModel row = filteredTableView.getItems().get(index);
+        String styleClass = getCellStyleClass(row);
+        if (styleClass != null) {
+            cell.getStyleClass().add(styleClass);
+        }
+    }
+
+    /**
+     * Text cell with row-based background styling.
+     */
+    private class TransparentTextCell extends TableCell<RowViewModel, String> {
         @Override
-        protected void updateItem(T item, boolean empty) {
+        protected void updateItem(String item, boolean empty) {
             super.updateItem(item, empty);
+            getStyleClass().removeAll(CELL_STATUS_CLASSES);
             if (empty || item == null) {
                 setText(null);
-                setBackground(Background.EMPTY);
+            } else {
+                setText(item);
+                applyCellStyle(this);
+            }
+        }
+    }
+
+    /**
+     * Number cell with row-based background styling.
+     */
+    private class TransparentNumberCell extends TableCell<RowViewModel, Number> {
+        @Override
+        protected void updateItem(Number item, boolean empty) {
+            super.updateItem(item, empty);
+            getStyleClass().removeAll(CELL_STATUS_CLASSES);
+            if (empty || item == null) {
+                setText(null);
             } else {
                 setText(item.toString());
-                applyCellBackground(this);
+                applyCellStyle(this);
             }
         }
     }
@@ -404,6 +491,7 @@ public class MainController {
 
         private static final double NORMAL_FONT_SIZE = 12.0;
         private static final double HIGHLIGHT_FONT_SIZE = 14.0;
+        private static final DecimalFormat PRICE_FORMAT = new DecimalFormat("0.00000");
 
         private final TextFlow textFlow;
         private final Text prefixText;
@@ -413,6 +501,7 @@ public class MainController {
 
         private double lastValue = -1;
         private int lastIndex = -1;
+        private RowViewModel lastRow;
 
         PriceTableCell() {
             setAlignment(Pos.CENTER_RIGHT);
@@ -428,16 +517,18 @@ public class MainController {
             suffixText.setFont(Font.font("System", FontWeight.NORMAL, NORMAL_FONT_SIZE));
 
             textFlow = new TextFlow(prefixText, highlightText, suffixText);
+            textFlow.setCache(true);
+            textFlow.setCacheHint(CacheHint.SPEED);
 
             flashTimer = new PauseTransition(Duration.millis(500));
             flashTimer.setOnFinished(e -> 
-                    getStyleClass().removeAll("price-flash-up", "price-flash-down", "price-flash"));
+                    getStyleClass().removeAll("price-flash"));
         }
 
         @Override
         protected void updateItem(Number item, boolean empty) {
             super.updateItem(item, empty);
-            getStyleClass().removeAll("price-up", "price-down");
+            getStyleClass().removeAll(CELL_STATUS_CLASSES);
 
             if (empty || item == null) {
                 clearCell();
@@ -446,32 +537,41 @@ public class MainController {
 
             double value = item.doubleValue();
             int index = getIndex();
+            RowViewModel row = getTableRow() != null ? getTableRow().getItem() : null;
+
+            if (row != lastRow) {
+                flashTimer.stop();
+                getStyleClass().removeAll("price-flash");
+                lastValue = -1;
+            }
 
             formatPrice(value);
             setGraphic(textFlow);
-            applyCellBackground(this);
 
             handleFlashAnimation(value, index);
             applyPriceStyle();
+            applyCellStyle(this);
 
             lastIndex = index;
             lastValue = value;
+            lastRow = row;
         }
 
         private void clearCell() {
             setGraphic(null);
+            getStyleClass().removeAll(CELL_STATUS_CLASSES);
             prefixText.setText("");
             highlightText.setText("");
             suffixText.setText("");
             lastValue = -1;
             lastIndex = -1;
+            lastRow = null;
             flashTimer.stop();
-            getStyleClass().removeAll("price-flash-up", "price-flash-down", "price-flash");
-            setBackground(Background.EMPTY);
+            getStyleClass().removeAll("price-flash");
         }
 
         private void formatPrice(double value) {
-            String formatted = String.format("%.5f", value);
+            String formatted = PRICE_FORMAT.format(value);
             int dot = formatted.indexOf('.');
             prefixText.setText(formatted.substring(0, dot + 3));
             highlightText.setText(formatted.substring(dot + 3, dot + 5));
@@ -483,25 +583,16 @@ public class MainController {
 
             if (recycled) {
                 flashTimer.stop();
-                getStyleClass().removeAll("price-flash-up", "price-flash-down", "price-flash");
+                getStyleClass().removeAll( "price-flash");
                 lastValue = -1;
                 return;
             }
 
             if (lastValue >= 0 && lastValue != value) {
-                getStyleClass().removeAll("price-flash-up", "price-flash-down", "price-flash");
+                getStyleClass().removeAll("price-flash");
 
-                RowViewModel row = getTableRow() != null ? getTableRow().getItem() : null;
-                int direction = row != null ? row.getPriceDirection() 
-                        : (value > lastValue ? 1 : -1);
-
-                if (direction > 0) {
-                    getStyleClass().add("price-flash-up");
-                } else if (direction < 0) {
-                    getStyleClass().add("price-flash-down");
-                } else {
-                    getStyleClass().add("price-flash");
-                }
+                getStyleClass().add("price-flash");
+                
 
                 flashTimer.stop();
                 flashTimer.playFromStart();
@@ -531,15 +622,14 @@ public class MainController {
         protected void updateItem(String item, boolean empty) {
             super.updateItem(item, empty);
             getStyleClass().removeAll(STATUS_CLASSES);
+            getStyleClass().removeAll(CELL_STATUS_CLASSES);
 
             if (empty || item == null) {
                 setText(null);
-                setBackground(Background.EMPTY);
                 return;
             }
 
             setText(item);
-            applyCellBackground(this);
 
             RowViewModel row = getTableRow() != null ? getTableRow().getItem() : null;
             if (row != null) {
@@ -548,6 +638,7 @@ public class MainController {
                     getStyleClass().add(styleClass);
                 }
             }
+            applyCellStyle(this);
         }
     }
 }

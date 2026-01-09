@@ -7,76 +7,51 @@
 
 /* ==================== Conditional Formatting (Real-time Updates) ==================== */
 
-/* ==================== Row Background by Status ==================== */
+/* ==================== Cell Background by Status ==================== */
+
+/* 
+ * Note: For FilteredTableView (TableView2), we apply background color 
+ * directly on cells, not rows. This ensures proper rendering.
+ */
 
 /* ALERT status - red background */
-.table-row-cell.row-alert,
-.table-row-cell.row-alert:odd,
-.table-row-cell.row-alert:even {
-    -fx-background: #ffcccc;
+.cell-alert {
     -fx-background-color: #ffcccc;
-    -fx-control-inner-background: #ffcccc;
-    -fx-control-inner-background-alt: #ffdddd;
 }
-.table-row-cell.row-alert:selected {
-    -fx-background: #ff9999;
-    -fx-background-color: #ff9999;
+.table-row-cell:selected > .cell-alert {
+    -fx-background-color: #ff999980;
 }
 
 /* NORMAL status - light green background */
-.table-row-cell.row-normal,
-.table-row-cell.row-normal:odd,
-.table-row-cell.row-normal:even {
-    -fx-background: #e6ffe6;
+.cell-normal {
     -fx-background-color: #e6ffe6;
-    -fx-control-inner-background: #e6ffe6;
-    -fx-control-inner-background-alt: #d9f2d9;
 }
-.table-row-cell.row-normal:selected {
-    -fx-background: #b3ffb3;
-    -fx-background-color: #b3ffb3;
+.table-row-cell:selected > .cell-normal {
+    -fx-background-color: #b3ffb380;
 }
 
 /* PENDING status - light orange/yellow background */
-.table-row-cell.row-pending,
-.table-row-cell.row-pending:odd,
-.table-row-cell.row-pending:even {
-    -fx-background: #fff2cc;
+.cell-pending {
     -fx-background-color: #fff2cc;
-    -fx-control-inner-background: #fff2cc;
-    -fx-control-inner-background-alt: #ffe6b3;
 }
-.table-row-cell.row-pending:selected {
-    -fx-background: #ffd966;
-    -fx-background-color: #ffd966;
+.table-row-cell:selected > .cell-pending {
+    -fx-background-color: #ffd96680;
 }
 
 /* ACTIVE status - light blue background */
-.table-row-cell.row-active,
-.table-row-cell.row-active:odd,
-.table-row-cell.row-active:even {
-    -fx-background: #cce6ff;
+.cell-active {
     -fx-background-color: #cce6ff;
-    -fx-control-inner-background: #cce6ff;
-    -fx-control-inner-background-alt: #b3d9ff;
 }
-.table-row-cell.row-active:selected {
-    -fx-background: #80bfff;
-    -fx-background-color: #80bfff;
+.table-row-cell:selected > .cell-active {
+    -fx-background-color: #80bfff80;
 }
 
 /* CLOSED status - light gray background */
-.table-row-cell.row-closed,
-.table-row-cell.row-closed:odd,
-.table-row-cell.row-closed:even {
-    -fx-background: #e6e6e6;
+.cell-closed {
     -fx-background-color: #e6e6e6;
-    -fx-control-inner-background: #e6e6e6;
-    -fx-control-inner-background-alt: #d9d9d9;
 }
-.table-row-cell.row-closed:selected {
-    -fx-background: #bfbfbf;
-    -fx-background-color: #bfbfbf;
+.table-row-cell:selected > .cell-closed {
+    -fx-background-color: #bfbfbf80;
 }
 
 /* Locked row (recently edited) - orange left border */
@@ -99,19 +74,9 @@
     -fx-font-weight: bold;
 }
 
-/* Flash animation for price changes - green flash for up */
-.price-flash-up {
-    -fx-background-color: #ccffcc !important;
-}
-
-/* Flash animation for price changes - red flash for down */
-.price-flash-down {
-    -fx-background-color: #ffcccc !important;
-}
-
 /* Generic flash (neutral) */
 .price-flash {
-    -fx-background-color: #ffffcc !important;
+    -fx-background-color: #09ff00 !important;
 }
 
 /* ==================== Status Cell Styling ==================== */
