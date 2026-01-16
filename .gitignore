@@ -8,3 +8,5 @@ target/
 .mvnw.sh
 .mvnw.bat
 .mvnw.sh
+.metals/
+.bloop/

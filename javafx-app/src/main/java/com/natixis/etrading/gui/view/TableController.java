@@ -7,6 +7,7 @@ import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.value.ObservableValue;
+import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -44,12 +45,13 @@ public class TableController implements Initializable {
     private static final List<String> ROW_STATUS_CLASSES = List.of("row-alert", "row-normal", "row-pending", "row-active", "row-closed");
     // Selection styling constants
     private static final String SELECTED_ROW_BG = "#3498db";
-    private static final String SELECTED_CELL_BORDER = "-fx-border-color: #2980b9; -fx-border-width: 2px;";
+    private static final String SELECTED_CELL_BORDER = "-fx-border-color: #1f6fb2; -fx-border-width: 2px;";
 
     // ==================== Fields ====================
 
     private final TableViewModel viewModel = new TableViewModel();
     private final List<FilteredTableColumn<RowViewModel, ?>> columns = new ArrayList<>();
+    private boolean selectionRefreshPending = false;
 
     // FXML injected fields
     @FXML
@@ -147,6 +149,8 @@ public class TableController implements Initializable {
             return row;
         });
 
+        setupSelectionRefresh();
+
         // Alternative: Add double-click handler directly to the table
         filteredTableView.setOnMouseClicked(event -> {
             if (event.getButton() == MouseButton.PRIMARY && event.getClickCount() == 2) {
@@ -160,6 +164,35 @@ public class TableController implements Initializable {
         });
 
         logger.info("FilteredTableView setup completed");
+    }
+
+    private void setupSelectionRefresh() {
+        TableView.TableViewSelectionModel<RowViewModel> selectionModel = filteredTableView.getSelectionModel();
+        if (selectionModel != null) {
+            selectionModel.selectedIndexProperty().addListener((obs, oldVal, newVal) -> requestSelectionRefresh());
+            selectionModel.getSelectedCells().addListener(new ListChangeListener<>() {
+                @Override
+                public void onChanged(Change<? extends TablePosition> change) {
+                    requestSelectionRefresh();
+                }
+            });
+        }
+
+        TableView.TableViewFocusModel<RowViewModel> focusModel = filteredTableView.getFocusModel();
+        if (focusModel != null) {
+            focusModel.focusedCellProperty().addListener((obs, oldVal, newVal) -> requestSelectionRefresh());
+        }
+    }
+
+    private void requestSelectionRefresh() {
+        if (selectionRefreshPending) {
+            return;
+        }
+        selectionRefreshPending = true;
+        Platform.runLater(() -> {
+            selectionRefreshPending = false;
+            filteredTableView.refresh();
+        });
     }
 
     @SuppressWarnings("unchecked")
@@ -383,14 +416,57 @@ public class TableController implements Initializable {
      * Build inline style for cell background.
      * Uses multiple properties to ensure it overrides default styles on all platforms.
      */
-    private String buildCellStyle(String bgColor) {
-        if (bgColor == null) return null;
+    private String buildCellStyle(String bgColor, boolean cellFocused) {
+        if (bgColor == null && !cellFocused) {
+            return null;
+        }
 
-        return """
-                -fx-background-color: %s;
-                -fx-background-insets: 0;
-                -fx-background: %s;
-                """.formatted(bgColor, bgColor);
+        StringBuilder style = new StringBuilder();
+        if (bgColor != null) {
+            style.append("""
+                    -fx-background-color: %s;
+                    -fx-background-insets: 0;
+                    -fx-background: %s;
+                    """.formatted(bgColor, bgColor));
+        }
+        if (cellFocused) {
+            style.append(SELECTED_CELL_BORDER);
+        }
+        return style.toString();
+    }
+
+    private boolean isFocusedCell(TableCell<RowViewModel, ?> cell) {
+        if (cell == null || cell.getTableView() == null) {
+            return false;
+        }
+        TablePosition<?, ?> focused = cell.getTableView().getFocusModel() != null
+                ? cell.getTableView().getFocusModel().getFocusedCell()
+                : null;
+        if (focused == null) {
+            return false;
+        }
+        return focused.getRow() == cell.getIndex() && focused.getTableColumn() == cell.getTableColumn();
+    }
+
+    private void updateCellStyle(TableCell<RowViewModel, ?> cell) {
+        if (cell == null || cell.isEmpty()) {
+            if (cell != null) {
+                cell.setStyle(null);
+            }
+            return;
+        }
+        boolean rowSelected = false;
+        if (cell.getTableView() != null && cell.getTableView().getSelectionModel() != null) {
+            TableView.TableViewSelectionModel<RowViewModel> selectionModel = cell.getTableView().getSelectionModel();
+            if (selectionModel.isCellSelectionEnabled()) {
+                rowSelected = selectionModel.isSelected(cell.getIndex(), cell.getTableColumn());
+            } else {
+                rowSelected = selectionModel.isSelected(cell.getIndex());
+            }
+        }
+        boolean cellFocused = isFocusedCell(cell);
+        String bgColor = rowSelected ? SELECTED_ROW_BG : getRowBackground(cell.getIndex());
+        cell.setStyle(buildCellStyle(bgColor, cellFocused));
     }
 
     // ==================== Custom Cell Classes ====================
@@ -407,8 +483,20 @@ public class TableController implements Initializable {
                 setStyle(null);
             } else {
                 setText(item);
-                setStyle(buildCellStyle(getRowBackground(getIndex())));
+                updateCellStyle(this);
             }
+        }
+
+        @Override
+        protected void updateSelected(boolean selected) {
+            super.updateSelected(selected);
+            updateCellStyle(this);
+        }
+
+        @Override
+        protected void updateFocused(boolean focused) {
+            super.updateFocused(focused);
+            updateCellStyle(this);
         }
     }
 
@@ -424,8 +512,20 @@ public class TableController implements Initializable {
                 setStyle(null);
             } else {
                 setText(item.toString());
-                setStyle(buildCellStyle(getRowBackground(getIndex())));
+                updateCellStyle(this);
             }
+        }
+
+        @Override
+        protected void updateSelected(boolean selected) {
+            super.updateSelected(selected);
+            updateCellStyle(this);
+        }
+
+        @Override
+        protected void updateFocused(boolean focused) {
+            super.updateFocused(focused);
+            updateCellStyle(this);
         }
     }
 
@@ -497,7 +597,7 @@ public class TableController implements Initializable {
             applyPriceStyle();
 
             // Apply row background
-            setStyle(buildCellStyle(getRowBackground(index)));
+            updateCellStyle(this);
 
             lastIndex = index;
             lastValue = value;
@@ -515,6 +615,18 @@ public class TableController implements Initializable {
             lastRow = null;
             flashTimer.stop();
             getStyleClass().removeAll("price-flash");
+        }
+
+        @Override
+        protected void updateSelected(boolean selected) {
+            super.updateSelected(selected);
+            updateCellStyle(this);
+        }
+
+        @Override
+        protected void updateFocused(boolean focused) {
+            super.updateFocused(focused);
+            updateCellStyle(this);
         }
 
         private void formatPrice(double value) {
@@ -597,7 +709,19 @@ public class TableController implements Initializable {
             }
 
             // Apply row background
-            setStyle(buildCellStyle(getRowBackground(getIndex())));
+            updateCellStyle(this);
+        }
+
+        @Override
+        protected void updateSelected(boolean selected) {
+            super.updateSelected(selected);
+            updateCellStyle(this);
+        }
+
+        @Override
+        protected void updateFocused(boolean focused) {
+            super.updateFocused(focused);
+            updateCellStyle(this);
         }
     }
 }
