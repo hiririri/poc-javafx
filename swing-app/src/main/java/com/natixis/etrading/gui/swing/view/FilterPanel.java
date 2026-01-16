@@ -1,4 +1,4 @@
-package com.csvmonitor.swing.view;
+package com.natixis.etrading.gui.swing.view;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;

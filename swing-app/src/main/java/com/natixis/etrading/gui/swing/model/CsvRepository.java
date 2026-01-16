@@ -1,7 +1,5 @@
-package com.csvmonitor.model;
+package com.natixis.etrading.gui.swing.model;
 
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,12 +15,6 @@ import java.util.Optional;
 /**
  * Repository class for CSV file operations.
  * 
- * Java 21 Features Used:
- * - Pattern matching for instanceof
- * - Sequenced Collections (getFirst, getLast)
- * - Enhanced switch expressions
- * - Record patterns
- * 
  * CSV format: id,symbol,price,qty,status,lastUpdate
  */
 public class CsvRepository {
@@ -34,9 +26,8 @@ public class CsvRepository {
     
     /**
      * Result record for CSV parsing operations.
-     * Java 21: Records as return types for multiple values.
      */
-    public record ParseResult(List<RowModel> rows, int errorCount) {
+    public record ParseResult(List<RowData> rows, int errorCount) {
         public boolean hasErrors() {
             return errorCount > 0;
         }
@@ -45,42 +36,40 @@ public class CsvRepository {
     /**
      * Load the built-in sample.csv from resources.
      */
-    public ObservableList<RowModel> loadDefaultCsv() {
+    public List<RowData> loadDefaultCsv() {
         logger.info("Loading default CSV from resources: {}", DEFAULT_CSV);
         try (var is = getClass().getResourceAsStream(DEFAULT_CSV);
              var reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-            return parseCsv(reader).rows().stream()
-                    .collect(FXCollections::observableArrayList, List::add, List::addAll);
+            return parseCsv(reader).rows();
         } catch (Exception e) {
             logger.error("Failed to load default CSV: {}", e.getMessage(), e);
-            return FXCollections.observableArrayList();
+            return new ArrayList<>();
         }
     }
     
     /**
      * Load CSV from an external file path.
      */
-    public ObservableList<RowModel> loadCsvFromFile(File file) {
+    public List<RowData> loadCsvFromFile(File file) {
         logger.info("Loading CSV from file: {}", file.getAbsolutePath());
         try (var reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8)) {
-            return parseCsv(reader).rows().stream()
-                    .collect(FXCollections::observableArrayList, List::add, List::addAll);
+            return parseCsv(reader).rows();
         } catch (Exception e) {
             logger.error("Failed to load CSV from file: {}", e.getMessage(), e);
-            return FXCollections.observableArrayList();
+            return new ArrayList<>();
         }
     }
     
     /**
      * Save the current table data to a CSV file.
      */
-    public boolean saveCsvToFile(List<RowModel> data, File file) {
+    public boolean saveCsvToFile(List<RowData> data, File file) {
         logger.info("Saving CSV to file: {}", file.getAbsolutePath());
         try (var writer = new PrintWriter(Files.newBufferedWriter(file.toPath(), StandardCharsets.UTF_8))) {
             // Write header
             writer.println("id,symbol,price,qty,status,lastUpdate");
             
-            // Write data rows using forEach
+            // Write data rows
             data.forEach(row -> writer.println(formatRow(row)));
             
             logger.info("Successfully saved {} rows to CSV", data.size());
@@ -94,7 +83,7 @@ public class CsvRepository {
     /**
      * Format a single row for CSV output.
      */
-    private String formatRow(RowModel row) {
+    private String formatRow(RowData row) {
         return "%d,%s,%.2f,%d,%s,%s".formatted(
                 row.getId(),
                 escapeCsv(row.getSymbol()),
@@ -109,7 +98,7 @@ public class CsvRepository {
      * Parse CSV content from a BufferedReader.
      */
     private ParseResult parseCsv(BufferedReader reader) throws IOException {
-        var rows = new ArrayList<RowModel>();
+        var rows = new ArrayList<RowData>();
         int lineNumber = 0;
         int errorCount = 0;
         
@@ -117,13 +106,13 @@ public class CsvRepository {
         while ((line = reader.readLine()) != null) {
             lineNumber++;
             
-            // Skip header line using pattern matching
+            // Skip header line
             if (lineNumber == 1 && isHeaderLine(line)) {
                 logger.debug("Skipping header line: {}", line);
                 continue;
             }
             
-            // Skip empty lines using isBlank() 
+            // Skip empty lines
             if (line.isBlank()) {
                 continue;
             }
@@ -131,7 +120,6 @@ public class CsvRepository {
             // Parse row and handle result
             var result = parseRow(line, lineNumber);
             
-            // Java 21: Pattern matching with Optional
             if (result.isPresent()) {
                 rows.add(result.get());
             } else {
@@ -153,9 +141,8 @@ public class CsvRepository {
     
     /**
      * Parse a single CSV row.
-     * Returns Optional to handle parse failures gracefully.
      */
-    private Optional<RowModel> parseRow(String line, int lineNumber) {
+    private Optional<RowData> parseRow(String line, int lineNumber) {
         try {
             String[] parts = line.split(",", -1);
             
@@ -175,7 +162,7 @@ public class CsvRepository {
                     ? LocalDateTime.now().format(ISO_FORMATTER) 
                     : parts[5].trim();
             
-            return Optional.of(new RowModel(id, symbol, price, qty, status, lastUpdate));
+            return Optional.of(new RowData(id, symbol, price, qty, status, lastUpdate));
             
         } catch (Exception e) {
             logger.warn("Error parsing line {}: {} - {}", lineNumber, line, e.getMessage());
@@ -185,14 +172,12 @@ public class CsvRepository {
     
     /**
      * Normalize status value.
-     * Java 21: Enhanced switch expression with pattern matching.
      */
     private String normalizeStatus(String status) {
         if (status.isEmpty()) {
             return "NORMAL";
         }
         
-        // Java 21: Switch expression with arrow syntax
         return switch (status.toUpperCase()) {
             case "ALERT", "WARN", "WARNING" -> "ALERT";
             case "OK", "NORMAL", "GOOD" -> "NORMAL";
@@ -205,7 +190,6 @@ public class CsvRepository {
     
     /**
      * Parse a number safely.
-     * Java 21: Generic pattern matching.
      */
     @SuppressWarnings("unchecked")
     private <T extends Number> Optional<T> parseNumber(String value, Class<T> type) {
@@ -214,7 +198,6 @@ public class CsvRepository {
         }
         
         try {
-            // Java 21: Pattern matching for Class type
             Number result = switch (type.getSimpleName()) {
                 case "Integer" -> Integer.parseInt(value);
                 case "Double" -> Double.parseDouble(value);
@@ -245,7 +228,6 @@ public class CsvRepository {
      * Escape a string for CSV output.
      */
     private String escapeCsv(String value) {
-        // Java 21: Pattern matching with instanceof
         if (value instanceof String s && !s.isEmpty()) {
             if (s.contains(",") || s.contains("\"") || s.contains("\n")) {
                 return "\"" + s.replace("\"", "\"\"") + "\"";
@@ -255,3 +237,4 @@ public class CsvRepository {
         return "";
     }
 }
+

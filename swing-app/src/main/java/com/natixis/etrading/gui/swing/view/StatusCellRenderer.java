@@ -1,6 +1,6 @@
-package com.csvmonitor.swing.view;
+package com.natixis.etrading.gui.swing.view;
 
-import com.csvmonitor.swing.model.RowData;
+import com.natixis.etrading.gui.swing.model.RowData;
 import com.jidesoft.grid.FilterableTableModel;
 
 import javax.swing.*;

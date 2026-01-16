@@ -1,67 +1,60 @@
-/*
- * CSS Styles for CSV Table Monitor
- * 
- * Minimal styles - only real-time update related formatting
- * Uses default JavaFX/Modena theme for everything else
- */
-
-/* ==================== Conditional Formatting (Real-time Updates) ==================== */
-
 /* ==================== Row Background by Status ==================== */
 
-/* 
- * Style cells based on row's style class.
- * Pattern: .table-row-cell.row-xxx > .table-cell
- */
+/*!* ALERT status - red background *!*/
+/*.table-row-cell.row-alert > .table-cell {*/
+/*    -fx-background-color: #ffcccc;*/
+/*}*/
 
-/* ALERT status - red background */
-.table-row-cell.row-alert > .table-cell {
-    -fx-background-color: #ffcccc;
-    -fx-background-insets: 0 0 1 0;
-}
-.table-row-cell.row-alert:selected > .table-cell {
-    -fx-background-color: #ff999990;
-    -fx-background-insets: 0 0 1 0;
-}
+/*!* NORMAL status - light green background *!*/
+/*.table-row-cell.row-normal > .table-cell {*/
+/*    -fx-background-color: #e6ffe6;*/
+/*}*/
 
-/* NORMAL status - light green background */
-.table-row-cell.row-normal > .table-cell {
-    -fx-background-color: #e6ffe6;
-    -fx-background-insets: 0 0 1 0;
-}
-.table-row-cell.row-normal:selected > .table-cell {
-    -fx-background-color: #b3ffb390;
-    -fx-background-insets: 0 0 1 0;
-}
+/*!* PENDING status - light orange/yellow background *!*/
+/*.table-row-cell.row-pending > .table-cell {*/
+/*    -fx-background-color: #fff2cc;*/
+/*}*/
 
-/* PENDING status - light orange/yellow background */
-.table-row-cell.row-pending > .table-cell {
-    -fx-background-color: #fff2cc;
-    -fx-background-insets: 0 0 1 0;
-}
-.table-row-cell.row-pending:selected > .table-cell {
-    -fx-background-color: #ffd96690;
-    -fx-background-insets: 0 0 1 0;
-}
+/*!* ACTIVE status - light blue background *!*/
+/*.table-row-cell.row-active > .table-cell {*/
+/*    -fx-background-color: #cce6ff;*/
+/*}*/
 
-/* ACTIVE status - light blue background */
-.table-row-cell.row-active > .table-cell {
-    -fx-background-color: #cce6ff;
-    -fx-background-insets: 0 0 1 0;
-}
-.table-row-cell.row-active:selected > .table-cell {
-    -fx-background-color: #80bfff90;
-    -fx-background-insets: 0 0 1 0;
-}
 
-/* CLOSED status - light gray background */
-.table-row-cell.row-closed > .table-cell {
-    -fx-background-color: #e6e6e6;
-    -fx-background-insets: 0 0 1 0;
-}
-.table-row-cell.row-closed:selected > .table-cell {
-    -fx-background-color: #bfbfbf90;
-    -fx-background-insets: 0 0 1 0;
+/*!* CLOSED status - light gray background *!*/
+/*.table-row-cell.row-closed > .table-cell {*/
+/*    -fx-background-color: #e6e6e6;*/
+/*}*/
+
+/*.table-row-cell:selected:focused .table-cell {*/
+/*    -fx-background-color: -fx-selection-bar;*/
+/*}*/
+/*.table-row-cell:selected:filled .table-cell {*/
+/*    -fx-background-color: -fx-selection-bar-non-focused;*/
+/*}*/
+
+/* ================= Row Background by Status ================= */
+/* Use descendant selector (no '>') */
+
+/*.table-row-cell:selected {*/
+/*    -fx-background-color: #1e88e5;*/
+/*    -fx-background: #1e88e5;*/
+/*    -fx-border-color: #1e88e5;*/
+/*    -fx-border-insets: 0;*/
+/*    -fx-text-fill: white;*/
+/*    -fx-font-weight: bold;*/
+/*}*/
+
+/* ================= Selection behaviour ================= */
+
+/* Add a selection indicator instead of changing the background */
+.table-row-cell:selected {
+    -fx-background-color: #3498db;
+    -fx-background: #3498db;
+    -fx-background-insets: 0;
+    -fx-border-color: #3498db;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
 }
 
 /* Locked row (recently edited) - orange left border */
@@ -71,18 +64,6 @@
 }
 
 /* ==================== Price Cell Styling ==================== */
-
-/* Price up - green text */
-.price-up {
-    -fx-text-fill: #009900 !important;
-    -fx-font-weight: bold;
-}
-
-/* Price down - red text */
-.price-down {
-    -fx-text-fill: #cc0000 !important;
-    -fx-font-weight: bold;
-}
 
 /* Generic flash (neutral) */
 .price-flash {
@@ -116,38 +97,4 @@
 
 .unlock-button {
     -fx-font-size: 11px;
-}
-
-/* ==================== Docking ==================== */
-
-.dock-grip {
-    -fx-padding: 0 6 0 0;
-    -fx-opacity: 0.6;
-    -fx-cursor: move;
-}
-
-.dock-preview {
-    -fx-background-color: rgba(60, 120, 200, 0.2);
-    -fx-border-color: #3c78c8;
-    -fx-border-width: 2;
-    -fx-background-insets: 2;
-    -fx-border-insets: 2;
-    -fx-background-radius: 6;
-    -fx-border-radius: 6;
-}
-
-.dock-host {
-    -fx-padding: 8;
-}
-
-.dock-host-active {
-    -fx-background-color: linear-gradient(to bottom, #f7f8fb, #eef1f6);
-    -fx-border-color: #d3d8e1;
-    -fx-border-width: 1;
-}
-
-.table-container {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #e0e4ea;
-    -fx-border-width: 1;
 }

@@ -1,6 +1,6 @@
-package com.csvmonitor.swing.view;
+package com.natixis.etrading.gui.swing.view;
 
-import com.csvmonitor.swing.controller.MainController;
+import com.natixis.etrading.gui.swing.controller.MainController;
 import com.jidesoft.grid.AutoFilterTableHeader;
 import com.jidesoft.grid.FilterableTableModel;
 import com.jidesoft.grid.SortableTable;

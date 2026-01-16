@@ -22,6 +22,8 @@
         <javafx.version>21.0.2</javafx.version>
         <controlsfx.version>11.2.1</controlsfx.version>
         <flatlaf.version>3.4</flatlaf.version>
+        <tiwulfx-dock.version>0.5</tiwulfx-dock.version>
+        <opencsv.version>2.3</opencsv.version>
     </properties>
 
     <repositories>
@@ -35,6 +37,12 @@
     <dependencyManagement>
         <dependencies>
             <!-- JavaFX -->
+
+            <dependency>
+                <groupId>com.panemu</groupId>
+                <artifactId>tiwulfx-dock</artifactId>
+                <version>${tiwulfx-dock.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-controls</artifactId>
@@ -87,6 +95,12 @@
                 <groupId>com.jidesoft</groupId>
                 <artifactId>jide-oss</artifactId>
                 <version>3.6.12</version>
+            </dependency>
+
+            <dependency>
+                <groupId>net.sf.opencsv</groupId>
+                <artifactId>opencsv</artifactId>
+                <version>${opencsv.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

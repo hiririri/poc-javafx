@@ -69,7 +69,7 @@ mvn clean javafx:run
 ```bash
 cd /home/qjiang/poc-javafx
 mvn clean package
-java --module-path target/classes:$HOME/.m2/repository/org/openjfx/javafx-base/21.0.2/javafx-base-21.0.2-linux.jar:$HOME/.m2/repository/org/openjfx/javafx-controls/21.0.2/javafx-controls-21.0.2-linux.jar:$HOME/.m2/repository/org/openjfx/javafx-fxml/21.0.2/javafx-fxml-21.0.2-linux.jar:$HOME/.m2/repository/org/openjfx/javafx-graphics/21.0.2/javafx-graphics-21.0.2-linux.jar:$HOME/.m2/repository/org/controlsfx/controlsfx/11.2.1/controlsfx-11.2.1.jar --add-modules com.csvmonitor -m com.csvmonitor/com.csvmonitor.view.App
+java --module-path target/classes:$HOME/.m2/repository/org/openjfx/javafx-base/21.0.2/javafx-base-21.0.2-linux.jar:$HOME/.m2/repository/org/openjfx/javafx-controls/21.0.2/javafx-controls-21.0.2-linux.jar:$HOME/.m2/repository/org/openjfx/javafx-fxml/21.0.2/javafx-fxml-21.0.2-linux.jar:$HOME/.m2/repository/org/openjfx/javafx-graphics/21.0.2/javafx-graphics-21.0.2-linux.jar:$HOME/.m2/repository/org/controlsfx/controlsfx/11.2.1/controlsfx-11.2.1.jar --add-modules com.csvmonitor -m com.csvmonitor/view.com.natixis.etrading.gui.App
 ```
 
 推荐使用方式 1，更简单。

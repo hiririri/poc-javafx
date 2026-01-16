@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import org.controlsfx.control.tableview2.FilteredTableView?>
+<BorderPane xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.natixis.etrading.gui.view.TableController">
+    <top>
+        <VBox styleClass="toolbar-container">
+            <padding>
+                <Insets bottom="8.0" left="16.0" right="16.0" top="12.0"/>
+            </padding>
+            <children>
+                <!-- Title Bar -->
+                <HBox alignment="CENTER_LEFT" spacing="12.0">
+                    <children>
+                        <Label fx:id="appTitle" styleClass="app-title" text="CSV Table Monitor"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="rowCountLabel" styleClass="info-label" text="Rows: 0"/>
+                    </children>
+                </HBox>
+
+                <!-- Main Toolbar -->
+                <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="main-toolbar">
+                    <children>
+                        <!-- File Group -->
+                        <HBox spacing="6.0" styleClass="button-group">
+                            <children>
+                                <Button fx:id="openCsvButton" onAction="#onOpenCsv" styleClass="toolbar-button"
+                                        text="Open CSV"/>
+                                <Button fx:id="saveCsvButton" onAction="#onSaveCsv" styleClass="toolbar-button"
+                                        text="Save CSV"/>
+                            </children>
+                        </HBox>
+
+                        <Separator orientation="VERTICAL"/>
+
+                        <!-- Control Group -->
+                        <HBox spacing="6.0" styleClass="button-group">
+                            <children>
+                                <Button fx:id="startPauseButton" onAction="#onStartPause" prefWidth="100.0"
+                                        styleClass="toolbar-button, primary-button" text="Start"/>
+                                <Button fx:id="unlockAllButton" onAction="#onUnlockAll" styleClass="toolbar-button"
+                                        text="Unlock All"/>
+                            </children>
+                        </HBox>
+
+                        <Separator orientation="VERTICAL"/>
+
+                        <Region HBox.hgrow="ALWAYS"/>
+                    </children>
+                </HBox>
+            </children>
+        </VBox>
+    </top>
+
+    <center>
+        <VBox fx:id="tableContainer" styleClass="table-container">
+            <padding>
+                <Insets bottom="8.0" left="8.0" right="8.0" top="8.0"/>
+            </padding>
+            <children>
+                <FilteredTableView fx:id="filteredTableView" editable="false" fixedCellSize="24.0"
+                                   tableMenuButtonVisible="true" VBox.vgrow="ALWAYS">
+                    <placeholder>
+                        <Label styleClass="placeholder-text" text="No data loaded. Click 'Open CSV' to load data."/>
+                    </placeholder>
+                </FilteredTableView>
+            </children>
+        </VBox>
+    </center>
+
+    <bottom>
+        <HBox alignment="CENTER_LEFT" spacing="12.0" styleClass="status-bar">
+            <padding>
+                <Insets bottom="8.0" left="16.0" right="16.0" top="8.0"/>
+            </padding>
+            <children>
+                <Label fx:id="statusLabel" styleClass="status-text" text="Ready"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label styleClass="hint-text" text="Use column filters to search data"/>
+            </children>
+        </HBox>
+    </bottom>
+</BorderPane>

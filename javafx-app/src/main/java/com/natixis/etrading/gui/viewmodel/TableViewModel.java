@@ -1,8 +1,8 @@
-package com.csvmonitor.viewmodel;
+package com.natixis.etrading.gui.viewmodel;
 
-import com.csvmonitor.model.CsvRepository;
-import com.csvmonitor.model.RowModel;
-import com.csvmonitor.model.UpdateEngine;
+import com.natixis.etrading.gui.service.CsvRepository;
+import com.natixis.etrading.gui.model.RowModel;
+import com.natixis.etrading.gui.service.UpdateEngine;
 import javafx.application.Platform;
 import javafx.beans.property.*;
 import javafx.collections.FXCollections;
@@ -16,16 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * ViewModel for the CSV Table Monitor.
- * 
- * Responsibilities:
- * - Manages the data source (converts RowModel to RowViewModel)
- * - Provides column configurations for the View
- * - Handles commands: loadCsv, start, pause, unlockRow
- * - Coordinates with CsvRepository and UpdateEngine
- * - Exposes only RowViewModel to the View (not RowModel)
- */
+
 public class TableViewModel {
 
     private static final Logger logger = LoggerFactory.getLogger(TableViewModel.class);

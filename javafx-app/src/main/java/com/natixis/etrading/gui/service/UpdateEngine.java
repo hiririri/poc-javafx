@@ -1,9 +1,11 @@
-package com.csvmonitor.swing.model;
+package com.natixis.etrading.gui.service;
 
+import com.natixis.etrading.gui.model.RowModel;
+import javafx.application.Platform;
+import javafx.collections.ObservableList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.swing.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -13,19 +15,11 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * Engine for real-time price updates.
- * 
- * Key features:
- * - Runs on background thread, updates UI via SwingUtilities.invokeLater
- * - Respects edit locks (rows manually edited are not auto-updated for 5 seconds)
- * - Batch updates for performance
- */
 public class UpdateEngine {
     
     private static final Logger logger = LoggerFactory.getLogger(UpdateEngine.class);
     
-    // Use virtual thread factory for the scheduler (Java 21)
+    // Java 21: Use virtual thread factory for the scheduler
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, 
             Thread.ofVirtual().name("UpdateEngine-VT-", 0).factory());
     
@@ -33,21 +27,19 @@ public class UpdateEngine {
     private final AtomicBoolean running = new AtomicBoolean(false);
     
     private ScheduledFuture<?> updateTask;
-    private List<RowData> data;
-    private Runnable tableUpdateCallback;
+    private ObservableList<RowModel> data;
     
-    // Configuration
-    private UpdateConfig config = new UpdateConfig(500, 5, 1000, 0.20);
+    // Configuration using record for immutability
+    private UpdateConfig config = new UpdateConfig(500, 5, 1000, 0.80);
     
-    /**
-     * Configuration record for update parameters.
-     */
+
     public record UpdateConfig(
             long intervalMs,
             int minRowsToUpdate,
             int maxRowsToUpdate,
             double priceChangePercent
     ) {
+        // Compact constructor with validation
         public UpdateConfig {
             if (intervalMs <= 0) throw new IllegalArgumentException("intervalMs must be positive");
             if (minRowsToUpdate < 0) throw new IllegalArgumentException("minRowsToUpdate must be non-negative");
@@ -59,21 +51,14 @@ public class UpdateEngine {
     /**
      * Internal record to hold pending price updates.
      */
-    private record PriceUpdate(RowData row, double newPrice) {}
+    private record PriceUpdate(RowModel row, double newPrice) {}
     
     /**
      * Set the data source for updates.
      */
-    public void setData(List<RowData> data) {
+    public void setData(ObservableList<RowModel> data) {
         this.data = data;
         logger.info("UpdateEngine data source set with {} rows", data != null ? data.size() : 0);
-    }
-    
-    /**
-     * Set callback for table updates (to trigger table repaint).
-     */
-    public void setTableUpdateCallback(Runnable callback) {
-        this.tableUpdateCallback = callback;
     }
     
     /**
@@ -145,6 +130,7 @@ public class UpdateEngine {
     
     /**
      * Perform a batch update on random rows.
+     * Only updates the price column.
      */
     private void performUpdate() {
         if (data == null || data.isEmpty()) {
@@ -157,12 +143,12 @@ public class UpdateEngine {
                     random.nextInt(config.maxRowsToUpdate() - config.minRowsToUpdate() + 1);
             rowsToUpdate = Math.min(rowsToUpdate, dataSize);
             
-            // Collect price updates
+            // Collect price updates using Stream API
             List<PriceUpdate> updates = new ArrayList<>(rowsToUpdate);
             
             for (int i = 0; i < rowsToUpdate; i++) {
                 int index = random.nextInt(dataSize);
-                RowData row = data.get(index);
+                RowModel row = data.get(index);
                 
                 // Skip locked rows
                 if (row.isLocked()) {
@@ -173,14 +159,14 @@ public class UpdateEngine {
                 double currentPrice = row.getPrice();
                 double priceChange = currentPrice * config.priceChangePercent() * (random.nextDouble() * 2 - 1);
                 double newPrice = Math.max(0.01, currentPrice + priceChange);
-                newPrice = Math.round(newPrice * 100.0) / 100.0;
+                newPrice = Math.round(newPrice * 1000000.0) / 1000000.0;
                 
                 updates.add(new PriceUpdate(row, newPrice));
             }
             
-            // Apply updates on Swing EDT
+            // Apply updates on JavaFX thread
             if (!updates.isEmpty()) {
-                SwingUtilities.invokeLater(() -> applyUpdates(updates));
+                Platform.runLater(() -> applyUpdates(updates));
             }
             
         } catch (Exception e) {
@@ -190,16 +176,12 @@ public class UpdateEngine {
     
     /**
      * Apply price updates to the model.
+     * Uses record accessor methods for clean code.
      */
     private void applyUpdates(List<PriceUpdate> updates) {
         updates.stream()
                 .filter(update -> !update.row().isLocked())
                 .forEach(update -> update.row().setPrice(update.newPrice()));
-        
-        // Notify table to repaint
-        if (tableUpdateCallback != null) {
-            tableUpdateCallback.run();
-        }
         
         logger.trace("Applied {} price updates", updates.size());
     }
@@ -219,4 +201,3 @@ public class UpdateEngine {
                 config.maxRowsToUpdate(), percent);
     }
 }
-

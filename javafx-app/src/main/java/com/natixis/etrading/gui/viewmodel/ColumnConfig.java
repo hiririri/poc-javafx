@@ -1,14 +1,8 @@
-package com.csvmonitor.viewmodel;
+package com.natixis.etrading.gui.viewmodel;
 
 import javafx.beans.value.ObservableValue;
 import java.util.function.Function;
 
-/**
- * Column configuration for the table.
- * Defines how each column should be displayed.
- * 
- * @param <T> The type of the cell value
- */
 public record ColumnConfig<T>(
         String id,
         String title,

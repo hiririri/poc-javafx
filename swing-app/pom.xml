@@ -68,7 +68,7 @@
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.1.1</version>
                 <configuration>
-                    <mainClass>com.csvmonitor.swing.App</mainClass>
+                    <mainClass>com.natixis.etrading.gui.swing.App</mainClass>
                 </configuration>
             </plugin>
 
@@ -79,7 +79,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.csvmonitor.swing.App</mainClass>
+                            <mainClass>com.natixis.etrading.gui.swing.App</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

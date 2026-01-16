@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import com.panemu.tiwulfx.control.dock.DetachableTabPane?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<VBox xmlns="http://javafx.com/javafx/11.0.1" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.natixis.etrading.gui.view.MainController">
+    <children>
+        <!-- Menu Bar -->
+        <MenuBar fx:id="menuBar">
+            <menus>
+                <!-- File Menu -->
+                <Menu fx:id="fileMenu" text="File">
+                    <items>
+                        <MenuItem fx:id="newTableItem" onAction="#onNewTable" text="New Table View"/>
+                        <SeparatorMenuItem/>
+                        <MenuItem fx:id="exitItem" onAction="#onExit" text="Exit"/>
+                    </items>
+                </Menu>
+
+                <!-- Options Menu -->
+                <Menu fx:id="optionsMenu" text="Options">
+                    <items>
+                        <MenuItem fx:id="preferencesItem" onAction="#onPreferences" text="Preferences..."/>
+                    </items>
+                </Menu>
+
+                <!-- Help Menu -->
+                <Menu fx:id="helpMenu" text="Help">
+                    <items>
+                        <MenuItem fx:id="aboutItem" onAction="#onAbout" text="About"/>
+                    </items>
+                </Menu>
+            </menus>
+        </MenuBar>
+
+        <!-- Main Content Area -->
+        <SplitPane fx:id="mainSplitPane" VBox.vgrow="ALWAYS" HBox.hgrow="ALWAYS">
+            <items>
+                <DetachableTabPane fx:id="tabPane"/>
+            </items>
+        </SplitPane>
+    </children>
+</VBox>

@@ -1,22 +1,9 @@
-package com.csvmonitor.model;
+package com.natixis.etrading.gui.model;
 
 import javafx.beans.property.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-/**
- * Model class representing a single row in the CSV table.
- * Uses JavaFX Properties for data binding support.
- * 
- * Java 21 Features Used:
- * - Enhanced switch expressions in getPriceDirection()
- * - Pattern matching compatible design
- * 
- * Key features:
- * - All fields are observable properties for real-time UI updates
- * - Tracks previous price for up/down styling
- * - Supports edit locking mechanism (5 seconds after manual edit)
- */
 public class RowModel {
     
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE_TIME;

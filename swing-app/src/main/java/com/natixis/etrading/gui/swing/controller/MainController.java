@@ -1,10 +1,10 @@
-package com.csvmonitor.swing.controller;
+package com.natixis.etrading.gui.swing.controller;
 
-import com.csvmonitor.swing.model.CsvRepository;
-import com.csvmonitor.swing.model.RowData;
-import com.csvmonitor.swing.model.UpdateEngine;
-import com.csvmonitor.swing.view.CsvTableModel;
-import com.csvmonitor.swing.view.MainView;
+import com.natixis.etrading.gui.swing.model.CsvRepository;
+import com.natixis.etrading.gui.swing.model.RowData;
+import com.natixis.etrading.gui.swing.model.UpdateEngine;
+import com.natixis.etrading.gui.swing.view.CsvTableModel;
+import com.natixis.etrading.gui.swing.view.MainView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

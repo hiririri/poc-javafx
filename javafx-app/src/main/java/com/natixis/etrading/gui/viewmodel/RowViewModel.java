@@ -1,6 +1,6 @@
-package com.csvmonitor.viewmodel;
+package com.natixis.etrading.gui.viewmodel;
 
-import com.csvmonitor.model.RowModel;
+import com.natixis.etrading.gui.model.RowModel;
 import javafx.beans.property.*;
 
 /**
@@ -208,10 +208,7 @@ public class RowViewModel {
         return model.isLocked();
     }
 
-    /**
-     * Get price direction for flash animation.
-     * @return 1 for up, -1 for down, 0 for no change
-     */
+
     public int getPriceDirection() {
         return model.getPriceDirection();
     }

@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    
+
     <parent>
         <groupId>com.csvmonitor</groupId>
         <artifactId>csv-table-monitor</artifactId>
@@ -15,11 +15,20 @@
     <version>1.0.0</version>
     <packaging>jar</packaging>
 
-    <name>CSV Table Monitor - JavaFX App</name>
-    <description>JavaFX CSV Table Monitor App with real-time updates and filtering</description>
-   
-   <dependencies>
+    <properties>
+        <mainClass>com.natixis.etrading.gui.view.MainController</mainClass>
+    </properties>
+
+    <dependencies>
         <!-- JavaFX -->
+
+        <!-- Docking Lib -->
+        <dependency>
+            <groupId>com.panemu</groupId>
+            <artifactId>tiwulfx-dock</artifactId>
+            <scope>compile</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
@@ -43,6 +52,13 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
+
+        </dependency>
+
+        <!-- Csv -->
+        <dependency>
+            <groupId>net.sf.opencsv</groupId>
+            <artifactId>opencsv</artifactId>
         </dependency>
     </dependencies>
 
@@ -63,7 +79,7 @@
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
                 <configuration>
-                    <mainClass>com.csvmonitor.view.App</mainClass>
+                    <mainClass>${mainClass}</mainClass>
                 </configuration>
             </plugin>
 
@@ -74,7 +90,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.csvmonitor.view.App</mainClass>
+                            <mainClass>${mainClass}</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
